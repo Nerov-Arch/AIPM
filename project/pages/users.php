@@ -1,0 +1,8 @@
+<?php
+$pageTitle = 'User Management';
+$activePage = 'users';
+include '../includes/header.php';
+?>
+<div class="page-heading"><div><p class="eyebrow">Access control</p><h1>User management</h1><p class="muted">Manage authorized personnel and workspace permissions.</p></div><button class="primary-button" type="button" data-toast="The invite form will open here.">+ Invite user</button></div>
+<section class="panel"><div class="panel-heading"><div><h2>Authorized users <span class="count-badge">18</span></h2><p class="muted">People with access to the AIP workspace</p></div><label class="search-box"><span>⌕</span><input type="search" placeholder="Search users..." data-table-search></label></div><div class="table-wrap"><table class="activity-table searchable-table"><thead><tr><th>User</th><th>Department</th><th>Role</th><th>Status</th><th>Last active</th><th></th></tr></thead><tbody><?php foreach ([['Maria Santos','Planning Office','Administrator','Active','Just now'],['Joel Reyes','Education Department','Encoder','Active','12 min ago'],['Ana Villanueva','Health Services Office','Reviewer','Active','2 hours ago'],['Carlos Dela Cruz','Public Works Office','Viewer','Inactive','Jun 12, 2025']] as $user): ?><tr><td><div class="person"><span class="avatar small-avatar"><?= strtoupper(substr($user[0],0,1).substr(strrchr($user[0], ' '),1,1)) ?></span><strong><?= $user[0] ?></strong></div></td><td><?= $user[1] ?></td><td><?= $user[2] ?></td><td><span class="status-pill <?= strtolower($user[3]) ?>"><i></i><?= $user[3] ?></span></td><td><?= $user[4] ?></td><td><button class="row-action" type="button">···</button></td></tr><?php endforeach; ?></tbody></table></div></section>
+<?php include '../includes/footer.php'; ?>

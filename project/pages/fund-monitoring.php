@@ -1,0 +1,9 @@
+<?php
+$pageTitle = 'Fund Monitoring';
+$activePage = 'funds';
+include '../includes/header.php';
+?>
+<div class="page-heading"><div><p class="eyebrow">Financial oversight</p><h1>Fund monitoring</h1><p class="muted">Track allocations, commitments, and utilization across offices.</p></div><button class="secondary-button" type="button" data-toast="Fund report exported.">⇩ Export report</button></div>
+<section class="stat-grid four"><article class="stat-card"><span class="stat-label">Total allocation</span><strong>₱4.2B</strong><p><span class="trend">↗ 8.3%</span> vs. previous year</p></article><article class="stat-card"><span class="stat-label">Committed funds</span><strong>₱2.9B</strong><p><span class="trend">68.4%</span> of total allocation</p></article><article class="stat-card"><span class="stat-label">Utilized funds</span><strong>₱1.7B</strong><p><span class="trend">58.2%</span> of commitments</p></article><article class="stat-card"><span class="stat-label">Remaining balance</span><strong>₱1.3B</strong><p><span class="warning-text">Requires monitoring</span></p></article></section>
+<section class="panel"><div class="panel-heading"><div><h2>Utilization by department</h2><p class="muted">Current fund performance for FY 2025</p></div><select class="small-select"><option>FY 2025</option><option>FY 2024</option></select></div><div class="fund-list"><?php foreach ([['Department of Public Works','₱1.2B','₱820M',68],['Health Services Office','₱850M','₱612M',72],['Education Department','₱620M','₱410M',66],['Social Welfare','₱410M','₱298M',73],['Agriculture Office','₱380M','₱214M',56]] as $fund): ?><div class="fund-row"><div class="fund-name"><strong><?= $fund[0] ?></strong><span><?= $fund[2] ?> utilized of <?= $fund[1] ?></span></div><strong><?= $fund[3] ?>%</strong><div class="progress-track"><span style="width:<?= $fund[3] ?>%"></span></div></div><?php endforeach; ?></div></section>
+<?php include '../includes/footer.php'; ?>
