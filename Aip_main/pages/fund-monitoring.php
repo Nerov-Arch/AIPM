@@ -1,0 +1,15 @@
+<?php
+$pageTitle = 'Fund Monitoring';
+$activePage = 'funds';
+$assetPrefix = '../';
+$funds = [
+ ['name'=>'General Fund (GF)','code'=>'1011','allocation'=>'₱3,000,000,000.00','utilized'=>'₱1,500,000,000.00','remaining'=>'₱1,500,000,000.00','percent'=>'50.0%','status'=>'On Track'],
+ ['name'=>'Special Education Fund (SEF)','code'=>'2011','allocation'=>'₱1,000,000,000.00','utilized'=>'₱450,000,000.00','remaining'=>'₱550,000,000.00','percent'=>'45.0%','status'=>'On Track'],
+ ['name'=>'Trust Fund','code'=>'3011','allocation'=>'₱500,000,000.00','utilized'=>'₱150,500,000.00','remaining'=>'₱349,500,000.00','percent'=>'30.1%','status'=>'Underutilized'],
+];
+include '../includes/header.php';
+?>
+<div class="page-heading"><div><p class="eyebrow">Financial oversight</p><h1>Fund Source Monitoring</h1><p class="muted">Track allocations and utilization across all funding streams.</p></div><button class="secondary-button" type="button" data-toast="Fund source report exported.">⇩ Export Report</button></div>
+<section class="stat-grid fund-summary"><article class="stat-card"><div class="stat-top"><span class="stat-label">Total programmed funds</span><span class="stat-icon blue">▥</span></div><strong>₱4,500,000,000.00</strong><p><span class="trend">↗ +5.2%</span> from last year</p></article><article class="stat-card"><div class="stat-top"><span class="stat-label">Total utilized</span><span class="stat-icon green">▣</span></div><strong>₱2,100,500,000.00</strong><div class="progress-track"><span style="width:46%"></span></div><p class="align-right">46% Utilized</p></article><article class="stat-card"><div class="stat-top"><span class="stat-label">Total remaining</span><span class="stat-icon amber">▱</span></div><strong class="orange-number">₱2,399,500,000.00</strong><p>Available for realignment</p></article></section>
+<section class="panel fund-table-panel"><div class="panel-heading"><div><h2>Fund Sources Breakdown</h2></div><div class="view-toggle"><button class="active" type="button">▤</button><button type="button">☷</button></div></div><div class="table-wrap"><table class="activity-table"><thead><tr><th>Fund Source</th><th>Allocation</th><th>Utilized</th><th>Remaining</th><th>Status</th></tr></thead><tbody><?php foreach ($funds as $fund): ?><tr><td><strong><?= htmlspecialchars($fund['name']) ?></strong><small class="table-subtext">Code: <?= htmlspecialchars($fund['code']) ?></small></td><td class="amount"><?= htmlspecialchars($fund['allocation']) ?></td><td class="amount"><?= htmlspecialchars($fund['utilized']) ?><small class="table-subtext <?= $fund['status'] === 'Underutilized' ? 'orange-text' : '' ?>"><?= htmlspecialchars($fund['percent']) ?></small></td><td class="amount"><?= htmlspecialchars($fund['remaining']) ?></td><td><span class="status-pill <?= $fund['status'] === 'On Track' ? 'approved' : 'pending' ?>"><i></i><?= htmlspecialchars($fund['status']) ?></span></td></tr><?php endforeach; ?></tbody></table></div><div class="pagination-bar"><span>Showing 1 to 3 of 3 entries</span><div><button type="button">‹</button><button type="button">›</button></div></div></section>
+<?php include '../includes/footer.php'; ?>
