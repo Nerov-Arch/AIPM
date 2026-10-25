@@ -37,7 +37,9 @@ The login page lists these accounts; click one to fill in the username.
 | Workflow | Evaluate / decide on a PPA | `pages/ppa-review.php` |
 | Workflow | Authorization queue | `pages/authorization-workflow.php` |
 | Workflow | Implementation | `pages/implementation-workflow.php` |
-| Reports & Funds | AIP Consolidation | `pages/aip-consolidation.php` |
+| Reports & Funds | AIP Consolidation (readiness, summary, AIP form, versions) | `pages/aip-consolidation.php` |
+| Reports & Funds | Saved AIP version (compare, finalize) | `pages/aip-version.php` |
+| Reports & Funds | AIP CSV download | `pages/aip-export.php` |
 | Reports & Funds | Fund Monitoring (sources, PPA funding, issues) | `pages/fund-monitoring.php` |
 | Reports & Funds | Fund source detail | `pages/fund-source.php` |
 | Reports & Funds | Add / edit fund source | `pages/fund-form.php` |
@@ -114,6 +116,23 @@ and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrat
 
 Workflow rules are in `includes/workflow.php`.
 
+## AIP Consolidation module
+
+| Feature | Status |
+|---|---|
+| Approved PPAs (approved, ongoing, completed) compiled automatically from the stored records; no re-encoding | Done |
+| Standard AIP form layout: AIP reference code, PPA description, implementing office, start/completion, expected outputs, funding source, PS/MOOE/CO/total, climate change adaptation/mitigation, CC typology code | Done |
+| Grouped by sector (General Public, Social, Economic, Other Services) then implementing office, with office subtotals, sector totals and a grand total | Done |
+| Amounts in pesos or in thousand pesos (₱'000); preview filters by sector, office and fund source | Done |
+| Summaries by sector, fund source and office | Done |
+| Readiness checks: approved PPAs with funding errors or missing AIP fields (block saving), undecided PPAs that will be left out, possible duplicates across offices, changes since the last version | Done |
+| Saved versions (snapshots) by the MPDO reviewer; compare any version with current data (added, removed, changed) | Works (session store) |
+| Approver finalizes one version, optionally with the adoption resolution; later versions are amendments and supersede the earlier final | Works (session store) |
+| Print-ready AIP form (legal landscape) with Prepared/Attested/Approved signatories; CSV export of the current AIP or any version | Done |
+| Reviewer generates, Approver finalizes, Administrator views, Encoders have no access; versions and finalization in the activity log | Enforced |
+
+Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/aip-table.php`.
+
 ## What works now (no database needed)
 
 - Login, logout and protected pages (redirect to login from any folder).
@@ -133,6 +152,7 @@ Workflow rules are in `includes/workflow.php`.
 | Session-backed user accounts and activity log | `includes/store.php` | `users` and `audit_logs` tables |
 | Session-backed PPA records and status history | `includes/ppa.php` | `ppas` and `ppa_history` tables |
 | Session-backed fund sources and PPA allocations | `includes/funds.php` | `fund_sources` and `ppa_fund_allocations` tables |
+| Session-backed AIP versions | `includes/aip.php` | `aip_versions` and `aip_version_entries` tables |
 | Shared development password `Dev@2026` and test-account list on the login page | `includes/mock-data.php`, `login.php` | Removed |
 | Fiscal year (`AIP_FISCAL_YEAR = 2027`) | `includes/helpers.php` | AIP cycle settings |
 

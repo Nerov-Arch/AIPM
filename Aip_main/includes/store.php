@@ -186,6 +186,8 @@ function auditActionLabel(string $action): string
         'ppa.approve'         => 'Approved PPA',
         'ppa.disapprove'      => 'Disapproved PPA',
         'ppa.send_back'       => 'Sent PPA back to MPDO',
+        'aip.version'         => 'Generated AIP version',
+        'aip.finalize'        => 'Finalized consolidated AIP',
         'fund.create'         => 'Added fund source',
         'fund.update'         => 'Edited fund source',
         'fund.activate'       => 'Activated fund source',

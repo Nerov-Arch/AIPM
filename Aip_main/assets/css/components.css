@@ -389,3 +389,83 @@ a.icon-button { display:inline-grid; place-items:center; }
 .bell-count { position:absolute; top:-3px; right:-8px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; color:#fff; background:#e25e64; font-size:8px; font-weight:800; line-height:16px; text-align:center; }
 @media (max-width:1000px) { .review-layout { grid-template-columns:1fr; } .decision-panel { position:static; } }
 @media (max-width:760px) { .stage-summary { grid-template-columns:1fr 1fr; } .stage-note { grid-column:1 / -1; justify-self:start !important; text-align:left; } .stage-steps { gap:5px; } }
+
+/* ============================================================
+ * AIP Consolidation module
+ * ============================================================ */
+.consolidation-grid { display:grid; grid-template-columns:minmax(0, 1.3fr) minmax(320px, 1fr); gap:18px; margin-bottom:18px; align-items:start; }
+.issue-list.compact li { padding:11px 0; grid-template-columns:70px 1fr; }
+.ref-list a { margin-right:6px; }
+.summary-table { width:100%; border-collapse:collapse; font-size:11px; }
+.summary-table th { padding:7px 0; color:#3d5872; font-weight:600; text-align:left; }
+.summary-table th small, .summary-table td small { display:block; color:#93a1b0; font-size:9px; font-weight:400; }
+.summary-table td { padding:7px 0 7px 12px; }
+.summary-table td.amount { text-align:right; white-space:nowrap; }
+.summary-table .mini-bar { width:100%; min-width:60px; }
+.segmented-control a { padding:7px 12px; border-radius:4px; color:#8a99a9; font-size:10px; }
+.segmented-control a.active { color:#38546f; background:#edf1f5; font-weight:700; }
+.aip-panel { margin-bottom:18px; }
+.aip-form-wrap { padding:0 20px 20px; }
+table.aip-form { width:100%; border-collapse:collapse; white-space:normal !important; font-size:10px; }
+table.aip-form th { padding:7px 6px !important; border:1px solid #dde4ec !important; color:#4a6582 !important; background:#f3f6f9; font-size:8px !important; text-align:center !important; vertical-align:middle; }
+table.aip-form td { height:auto !important; padding:6px !important; border:1px solid #e8edf2 !important; color:#3d5872 !important; vertical-align:top; }
+table.aip-form td.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+table.aip-form td.strong { font-weight:700; color:var(--ink) !important; }
+table.aip-form td.nowrap { white-space:nowrap; }
+table.aip-form .aip-desc { min-width:160px; }
+table.aip-form .aip-desc strong, table.aip-form .aip-desc small { display:block; }
+table.aip-form .aip-desc small { margin-top:2px; color:#93a1b0; font-size:9px; }
+.aip-sector-row td { color:#fff !important; background:var(--navy); font-weight:800; letter-spacing:.06em; }
+.aip-sector-row td span { color:#aebfd2; font-weight:400; letter-spacing:0; }
+.aip-office-row td { color:#1c589e !important; background:#eaf2fd; font-weight:700; }
+.aip-subtotal td { color:#536b84 !important; background:#fafbfd; font-style:italic; font-weight:600; }
+.aip-subtotal td:first-child, .aip-sector-total td:first-child, .aip-grand-total td:first-child { text-align:right; }
+.aip-sector-total td { color:var(--ink) !important; background:#f0f4f8; font-weight:800; }
+.aip-grand-total td { color:#fff !important; background:#1c3f66; font-weight:800; font-size:11px; }
+.aip-print-header, .aip-signatories { display:none; }
+.diff-list { display:grid; gap:6px; margin:0; padding:0; list-style:none; font-size:11px; }
+.diff-list li { padding:8px 10px; border-left:3px solid; border-radius:4px; color:#3d5872; }
+.diff-list li b { margin-right:6px; }
+.diff-list li small { display:block; margin-top:3px; color:#7a8b9e; }
+.diff-list li a { color:var(--blue); font-weight:700; }
+.diff-list .added { border-color:var(--green); background:var(--green-soft); }
+.diff-list .removed { border-color:#d9575e; background:#fff0f1; }
+.diff-list .changed { border-color:var(--amber); background:#fffaf0; }
+.version-kind { margin-left:6px; padding:2px 8px; border-radius:10px; color:#4a6582; background:#edf1f5; font-family:'DM Sans',sans-serif; font-size:11px; font-weight:700; letter-spacing:0; vertical-align:4px; }
+.form-dialog label.full small { color:#93a1b0; font-weight:400; }
+button[disabled] { opacity:.5; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+@media (max-width:1000px) { .consolidation-grid { grid-template-columns:1fr; } }
+
+@media print {
+    @page { size:legal landscape; margin:10mm; }
+    .no-print, .flash, .content > .alert { display:none !important; }
+    .aip-panel { border:0 !important; box-shadow:none !important; padding:0 !important; }
+    .aip-form-wrap { padding:0 !important; overflow:visible !important; }
+    .aip-print-header { display:block; margin-bottom:10px; text-align:center; color:#000; }
+    .aip-print-header p { margin:1px 0; font-size:10px; }
+    .aip-print-header h2 { margin:4px 0 2px; font-size:14px; letter-spacing:.05em; }
+    .aip-print-caption { font-style:italic; }
+    table.aip-form th, table.aip-form td { border:1px solid #777 !important; color:#000 !important; font-size:7.5px !important; padding:3px 4px !important; }
+    table.aip-form th { background:#e6e6e6 !important; }
+    .aip-sector-row td, .aip-grand-total td { background:#d9d9d9 !important; }
+    .aip-office-row td, .aip-sector-total td, .aip-subtotal td { background:#f2f2f2 !important; }
+    thead { display:table-header-group; }
+    tr { page-break-inside:avoid; }
+    .aip-signatories { display:grid !important; grid-template-columns:repeat(3, 1fr); gap:40px; margin-top:28px; font-size:10px; color:#000; }
+    .aip-signatories div { display:grid; gap:4px; }
+    .aip-signatories b { display:block; height:26px; border-bottom:1px solid #000; }
+    .aip-signatories strong { font-weight:600; }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+/* Row colors must outrank the generic "table.aip-form td" rule */
+table.aip-form .aip-sector-row td { color:#fff !important; background:var(--navy); }
+table.aip-form .aip-sector-row td span { color:#aebfd2; }
+table.aip-form .aip-office-row td { color:#1c589e !important; }
+table.aip-form .aip-subtotal td { color:#536b84 !important; }
+table.aip-form .aip-sector-total td { color:var(--ink) !important; }
+table.aip-form .aip-grand-total td { color:#fff !important; background:#1c3f66; }
+.report-heading .heading-actions a, .report-heading .heading-actions button { white-space:nowrap; }
+@media print {
+    table.aip-form .aip-sector-row td, table.aip-form .aip-grand-total td { color:#000 !important; background:#d9d9d9 !important; }
+    table.aip-form .aip-sector-row td span { color:#000; }
+}
