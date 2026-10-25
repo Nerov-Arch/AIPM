@@ -59,6 +59,23 @@
         });
     }
 
+    // DEV-ONLY: click a test account to fill the login form
+    $$('[data-fill-login]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var identity = document.getElementById('identity');
+            var password = document.getElementById('password');
+            if (identity) identity.value = button.getAttribute('data-fill-login');
+            if (password) { password.value = ''; password.focus(); }
+        });
+    });
+
+    // Ask before submitting forms that change an account
+    $$('form[data-confirm]').forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!window.confirm(form.getAttribute('data-confirm'))) event.preventDefault();
+        });
+    });
+
     /* ------------------------------------------------------------
      * Toast buttons
      * ---------------------------------------------------------- */
@@ -450,6 +467,20 @@
         var draftRequired = (form.getAttribute('data-draft-required') || '').split(/\s+/);
         var required = field.required && (!isDraft || draftRequired.indexOf(field.name) !== -1);
 
+        if (field.disabled) {
+            return true;
+        }
+        if (field.type === 'radio') {
+            var group = $$('input[type=radio][name="' + field.name + '"]', form);
+            var picked = group.some(function (radio) { return radio.checked; });
+            var radioHolder = $('[data-error-for="' + field.name + '"]', form);
+            var legend = field.closest('fieldset') ? $('legend', field.closest('fieldset')) : null;
+            var groupName = legend ? legend.textContent.replace('*', '').trim() : 'an option';
+            var radioMessage = required && !picked ? 'Choose ' + (legend ? 'a ' + groupName.toLowerCase() : groupName) + '.' : '';
+            if (radioHolder) radioHolder.textContent = radioMessage;
+            return radioMessage === '';
+        }
+
         if (required && value === '') {
             message = fieldLabel(field) + ' is required.';
         } else if (value !== '' && rule === 'money') {
@@ -463,6 +494,12 @@
             }
         } else if (value !== '' && rule === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
             message = 'Enter a valid email address.';
+        } else if (value !== '' && rule === 'username' && !/^[a-z0-9._-]{3,30}$/.test(value.toLowerCase())) {
+            message = 'Use 3–30 lowercase letters, numbers, dots, dashes or underscores.';
+        } else if (value !== '' && rule === 'password' && (value.length < 8 || !/[A-Za-z]/.test(value) || !/\d/.test(value))) {
+            message = 'Use at least 8 characters with at least one letter and one number.';
+        } else if (field.getAttribute('data-same-as') && value !== '' && form.elements[field.getAttribute('data-same-as')] && value !== form.elements[field.getAttribute('data-same-as')].value) {
+            message = 'The passwords do not match.';
         } else if (field.maxLength > 0 && value.length > field.maxLength) {
             message = 'Use ' + field.maxLength + ' characters or fewer.';
         } else if (value !== '' && field.type === 'date' && ((field.min && value < field.min) || (field.max && value > field.max))) {

@@ -1,15 +1,21 @@
 <?php
+/**
+ * Page header. Before including it, a page sets:
+ *   $pageTitle, $pageSection, $activePage, $assetPrefix
+ *   $requiredPermission  (permission needed to open the page)
+ */
 $assetPrefix = $assetPrefix ?? '';
 require_once __DIR__ . '/auth.php';
 requireLogin($assetPrefix);
-require_once __DIR__ . '/mock-data.php';
+if (!empty($requiredPermission) && empty($skipPermissionCheck)) {
+    requirePermission($requiredPermission, $assetPrefix);
+}
 
 $pageTitle = $pageTitle ?? 'Dashboard';
 $pageSection = $pageSection ?? '';
 $activePage = $activePage ?? 'dashboard';
-$userName = $_SESSION['user']['name'] ?? 'AIP Administrator';
-$userRole = $_SESSION['user']['role'] ?? 'Administrator';
-$userInitials = initials($userName);
+$currentUser = currentUser();
+$flashes = takeFlashes();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -27,7 +33,7 @@ $userInitials = initials($userName);
     <div class="main-area">
         <div class="dev-banner" role="note">
             <strong>Development version</strong>
-            <span>Sample data only. Changes are not saved until the database is connected.</span>
+            <span>Sample data kept in this browser session only. Nothing is saved to a database yet.</span>
         </div>
         <header class="topbar">
             <button class="mobile-menu" type="button" aria-label="Open menu" data-sidebar-toggle>☰</button>
@@ -44,7 +50,14 @@ $userInitials = initials($userName);
                 </form>
                 <button class="icon-button" type="button" aria-label="Notifications" data-toast="No new notifications.">♧</button>
                 <button class="icon-button" type="button" aria-label="Help" data-toast="Need help? Contact the MPDO system administrator.">?</button>
-                <div class="user-menu" title="Signed in as <?= e($userRole) ?>"><span class="avatar"><?= e($userInitials) ?></span><span class="user-name"><?= e($userName) ?></span><span class="chevron">⌄</span></div>
+                <a class="user-menu" href="<?= $assetPrefix ?>pages/account.php" title="My account">
+                    <span class="avatar"><?= e(initials($currentUser['name'])) ?></span>
+                    <span class="user-name"><?= e($currentUser['name']) ?><small><?= e($currentUser['role']) ?> · <?= e($currentUser['office']) ?></small></span>
+                    <span class="chevron">⌄</span>
+                </a>
             </div>
         </header>
         <main class="content">
+        <?php foreach ($flashes as $flash): ?>
+            <div class="alert <?= e($flash['type']) ?>" role="<?= $flash['type'] === 'error' ? 'alert' : 'status' ?>"><?= $flash['message'] ?></div>
+        <?php endforeach; ?>

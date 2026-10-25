@@ -1,10 +1,11 @@
 <?php
 $pageTitle = 'Dashboard';
 $activePage = 'dashboard';
+$requiredPermission = 'dashboard.view';
 include 'includes/header.php';
 
 // MOCK: all figures below are calculated from the sample PPAs.
-$ppas = mockPpas();
+$ppas = visiblePpas();   // Encoders see only their own office
 $approvedStatuses = ['approved', 'ongoing', 'completed'];
 $pendingStatuses = ['for_review', 'recommended', 'returned'];
 
@@ -37,10 +38,10 @@ usort($recent, fn ($a, $b) => strcmp($b['updated'], $a['updated']));
 $recent = array_slice($recent, 0, 5);
 ?>
 <div class="page-heading">
-    <div><p class="eyebrow">Overview</p><h1>FY <?= AIP_FISCAL_YEAR ?> Dashboard</h1><p class="muted">Summary of the Annual Investment Program being prepared by the MPDO.</p></div>
+    <div><p class="eyebrow">Overview</p><h1>FY <?= AIP_FISCAL_YEAR ?> Dashboard</h1><p class="muted"><?= can('scope.all_offices') ? 'Summary of the Annual Investment Program being prepared by the MPDO.' : 'Summary of PPAs from ' . e(officeName(currentUser()['office'])) . '.' ?></p></div>
     <div class="heading-actions">
         <button class="secondary-button" type="button" data-export-csv="recent-ppa-activity.csv" data-for="recent-table">⇩ Export</button>
-        <a class="primary-button" href="pages/projects.php">+ New project</a>
+        <?php if (can('ppa.encode')): ?><a class="primary-button" href="pages/projects.php">+ New project</a><?php endif; ?>
     </div>
 </div>
 
@@ -63,7 +64,7 @@ $recent = array_slice($recent, 0, 5);
         </div>
     </article>
     <article class="panel">
-        <div class="panel-heading"><div><h2>Top allocations by office</h2><p class="muted">Proposed cost per implementing office</p></div><a href="pages/fund-monitoring.php">Fund monitoring <span>→</span></a></div>
+        <div class="panel-heading"><div><h2>Top allocations by office</h2><p class="muted">Proposed cost per implementing office</p></div><?php if (can('funds.view')): ?><a href="pages/fund-monitoring.php">Fund monitoring <span>→</span></a><?php endif; ?></div>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Department / office</th><th>PPAs</th><th>Allocation</th></tr></thead>

@@ -2,6 +2,7 @@
 $pageTitle = 'Fund Monitoring';
 $pageSection = 'Reports & Funds';
 $activePage = 'funds';
+$requiredPermission = 'funds.view';
 $assetPrefix = '../';
 include '../includes/header.php';
 

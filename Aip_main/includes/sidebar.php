@@ -4,25 +4,32 @@
  */
 $navGroups = [
     '' => [
-        'dashboard' => ['href' => 'dashboard.php', 'icon' => '▦', 'label' => 'Dashboard'],
+        'dashboard' => ['href' => 'dashboard.php', 'icon' => '▦', 'label' => 'Dashboard', 'perm' => 'dashboard.view'],
     ],
     'Planning' => [
-        'projects' => ['href' => 'pages/projects.php',       'icon' => '▤', 'label' => 'Project Encoding'],
-        'linking'  => ['href' => 'pages/project-linking.php', 'icon' => '⛓', 'label' => 'Project Linking'],
+        'projects' => ['href' => 'pages/projects.php',       'icon' => '▤', 'label' => 'Project Encoding', 'perm' => 'ppa.encode'],
+        'linking'  => ['href' => 'pages/project-linking.php', 'icon' => '⛓', 'label' => 'Project Linking', 'perm' => 'linking.view'],
     ],
     'Workflow' => [
-        'review'         => ['href' => 'pages/review-workflow.php',         'icon' => '✓', 'label' => 'Review'],
-        'authorization'  => ['href' => 'pages/authorization-workflow.php',  'icon' => '✎', 'label' => 'Authorization'],
-        'implementation' => ['href' => 'pages/implementation-workflow.php', 'icon' => '▶', 'label' => 'Implementation'],
+        'review'         => ['href' => 'pages/review-workflow.php',         'icon' => '✓', 'label' => 'Review', 'perm' => 'review.view'],
+        'authorization'  => ['href' => 'pages/authorization-workflow.php',  'icon' => '✎', 'label' => 'Authorization', 'perm' => 'authorization.view'],
+        'implementation' => ['href' => 'pages/implementation-workflow.php', 'icon' => '▶', 'label' => 'Implementation', 'perm' => 'implementation.view'],
     ],
     'Reports & Funds' => [
-        'consolidation' => ['href' => 'pages/aip-consolidation.php', 'icon' => '▣', 'label' => 'AIP Consolidation'],
-        'funds'         => ['href' => 'pages/fund-monitoring.php',   'icon' => '▥', 'label' => 'Fund Monitoring'],
+        'consolidation' => ['href' => 'pages/aip-consolidation.php', 'icon' => '▣', 'label' => 'AIP Consolidation', 'perm' => 'consolidation.view'],
+        'funds'         => ['href' => 'pages/fund-monitoring.php',   'icon' => '▥', 'label' => 'Fund Monitoring', 'perm' => 'funds.view'],
     ],
     'Administration' => [
-        'users' => ['href' => 'pages/users.php', 'icon' => '♙', 'label' => 'User Management'],
+        'users' => ['href' => 'pages/users.php', 'icon' => '♙', 'label' => 'User Management', 'perm' => 'users.manage'],
     ],
 ];
+// Show only the pages the signed-in user's role may open.
+foreach ($navGroups as $groupLabel => $items) {
+    $navGroups[$groupLabel] = array_filter($items, fn ($item) => can($item['perm']));
+    if (!$navGroups[$groupLabel]) {
+        unset($navGroups[$groupLabel]);
+    }
+}
 ?>
 <aside class="sidebar" data-sidebar>
     <div class="brand-block">
@@ -30,7 +37,7 @@ $navGroups = [
         <div><strong>AIP Manager</strong><small>MPDO Indang, Cavite<br>Annual Investment Program</small></div>
         <button class="sidebar-close" type="button" aria-label="Close menu" data-sidebar-close>×</button>
     </div>
-    <a class="new-proposal" href="<?= $assetPrefix ?>pages/projects.php"><span>＋</span> New Proposal</a>
+    <?php if (can('ppa.encode')): ?><a class="new-proposal" href="<?= $assetPrefix ?>pages/projects.php"><span>＋</span> New Proposal</a><?php endif; ?>
     <nav class="primary-nav" aria-label="Main navigation">
         <?php foreach ($navGroups as $groupLabel => $items): ?>
             <?php if ($groupLabel !== ''): ?><p class="nav-group-label"><?= e($groupLabel) ?></p><?php endif; ?>
@@ -40,7 +47,7 @@ $navGroups = [
         <?php endforeach; ?>
     </nav>
     <div class="sidebar-bottom">
-        <span class="nav-item disabled" aria-disabled="true" title="Available in a later stage"><span aria-hidden="true">⚙</span>Settings<em>Soon</em></span>
+        <a class="nav-item <?= $activePage === 'account' ? 'active' : '' ?>" href="<?= $assetPrefix ?>pages/account.php"><span aria-hidden="true">⚙</span>My Account</a>
         <span class="nav-item disabled" aria-disabled="true" title="Available in a later stage"><span aria-hidden="true">?</span>Support<em>Soon</em></span>
         <a class="logout-link" href="<?= $assetPrefix ?>logout.php"><span aria-hidden="true">↪</span>Sign out</a>
     </div>

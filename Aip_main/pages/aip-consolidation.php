@@ -2,6 +2,7 @@
 $pageTitle = 'AIP Consolidation';
 $pageSection = 'Reports & Funds';
 $activePage = 'consolidation';
+$requiredPermission = 'consolidation.view';
 $assetPrefix = '../';
 include '../includes/header.php';
 

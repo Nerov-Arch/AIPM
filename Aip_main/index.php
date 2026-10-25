@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 
-if (isset($_SESSION['user'])) {
+if (isLoggedIn()) {
     header('Location: dashboard.php');
     exit;
 }

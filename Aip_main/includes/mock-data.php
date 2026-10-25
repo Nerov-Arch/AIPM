@@ -16,6 +16,7 @@
  */
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/permissions.php';
 
 /** MOCK: implementing offices (code => name). */
 function mockOffices(): array
@@ -75,24 +76,30 @@ function mockPpas(): array
     ];
 }
 
-/** MOCK: system users. */
+/**
+ * MOCK: starting user accounts. Copied into the session store on first use
+ * (see includes/store.php). DEV-ONLY: every account uses the development
+ * password below; it is hashed when the store is created.
+ */
+const MOCK_DEV_PASSWORD = 'Dev@2026';
+
 function mockUsers(): array
 {
     return [
-        ['name' => 'Maria Villanueva', 'email' => 'm.villanueva@indang.example', 'role' => 'Administrator',  'office' => 'MPDO',  'status' => 'Active'],
-        ['name' => 'Jose Bautista',    'email' => 'j.bautista@indang.example',   'role' => 'MPDO Reviewer',  'office' => 'MPDO',  'status' => 'Active'],
-        ['name' => 'Ana Lim',          'email' => 'a.lim@indang.example',        'role' => 'Approver',       'office' => 'MPDO',  'status' => 'Active'],
-        ['name' => 'Rafael Dela Cruz', 'email' => 'r.delacruz@indang.example',   'role' => 'Encoder',        'office' => 'MEO',   'status' => 'Active'],
-        ['name' => 'Liza Garcia',      'email' => 'l.garcia@indang.example',     'role' => 'Encoder',        'office' => 'MSWDO', 'status' => 'Active'],
-        ['name' => 'Paolo Mendoza',    'email' => 'p.mendoza@indang.example',    'role' => 'Encoder',        'office' => 'MAO',   'status' => 'Inactive'],
-        ['name' => 'Carmen Ramos',     'email' => 'c.ramos@indang.example',      'role' => 'Viewer',         'office' => 'MENRO', 'status' => 'Active'],
+        ['id' => 1, 'username' => 'admin',     'name' => 'Maria Villanueva', 'email' => 'm.villanueva@indang.example', 'role' => 'Administrator', 'office' => 'MPDO',  'position' => 'System Administrator',                         'status' => 'Active'],
+        ['id' => 2, 'username' => 'jbautista', 'name' => 'Jose Bautista',    'email' => 'j.bautista@indang.example',   'role' => 'Reviewer',      'office' => 'MPDO',  'position' => 'Planning Officer II',                          'status' => 'Active'],
+        ['id' => 3, 'username' => 'alim',      'name' => 'Ana Lim',          'email' => 'a.lim@indang.example',        'role' => 'Approver',      'office' => 'MPDO',  'position' => 'Municipal Planning and Development Coordinator', 'status' => 'Active'],
+        ['id' => 4, 'username' => 'rdelacruz', 'name' => 'Rafael Dela Cruz', 'email' => 'r.delacruz@indang.example',   'role' => 'Encoder',       'office' => 'MEO',   'position' => 'Engineer II',                                  'status' => 'Active'],
+        ['id' => 5, 'username' => 'lgarcia',   'name' => 'Liza Garcia',      'email' => 'l.garcia@indang.example',     'role' => 'Encoder',       'office' => 'MSWDO', 'position' => 'Social Welfare Officer I',                     'status' => 'Active'],
+        ['id' => 6, 'username' => 'pmendoza',  'name' => 'Paolo Mendoza',    'email' => 'p.mendoza@indang.example',    'role' => 'Encoder',       'office' => 'MAO',   'position' => 'Agricultural Technologist',                    'status' => 'Inactive'],
+        ['id' => 7, 'username' => 'cramos',    'name' => 'Carmen Ramos',     'email' => 'c.ramos@indang.example',      'role' => 'Encoder',       'office' => 'MENRO', 'position' => 'Environmental Management Specialist',          'status' => 'Active'],
     ];
 }
 
-/** MOCK: roles offered in the user form. Pending confirmation with the MPDO. */
+/** Roles offered in the user form. */
 function mockRoles(): array
 {
-    return ['Administrator', 'Encoder', 'MPDO Reviewer', 'Approver', 'Viewer'];
+    return array_keys(ROLES);
 }
 
 /** Find a single PPA by reference, or null. */

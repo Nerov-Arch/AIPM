@@ -14,7 +14,7 @@
 $queueId = 'queue-table';
 $steps = ['Encoding', 'Review', 'Authorization', 'Implementation'];
 $rows = [];
-foreach (mockPpas() as $ppa) {
+foreach (visiblePpas() as $ppa) {   // Encoders see only their own office
     if (in_array($ppa['status'], $queue['pending'], true)) {
         $rows[] = $ppa + ['state' => 'pending'];
     } elseif (in_array($ppa['status'], $queue['processed'], true)) {
@@ -26,6 +26,8 @@ sort($officesInQueue);
 $pendingCount = count(array_filter($rows, fn ($r) => $r['state'] === 'pending'));
 $processedCount = count($rows) - $pendingCount;
 $showProgress = !empty($queue['showProgress']);
+$canAct = !empty($queue['actPermission']) && can($queue['actPermission']);
+$scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . officeName(currentUser()['office']) . ') only.';
 ?>
 <div class="page-heading">
     <div><p class="eyebrow"><?= e($queue['eyebrow']) ?></p><h1><?= e($queue['title']) ?></h1><p class="muted"><?= e($queue['description']) ?></p></div>
@@ -34,6 +36,8 @@ $showProgress = !empty($queue['showProgress']);
         <button type="button" data-tab="processed" data-for="<?= $queueId ?>" aria-pressed="false">Processed (<?= $processedCount ?>)</button>
     </div>
 </div>
+
+<?php if ($scopeNote): ?><div class="alert info" role="status"><?= e($scopeNote) ?></div><?php endif; ?>
 
 <section class="panel cycle-panel">
     <div class="panel-heading"><h2>Current Cycle: FY <?= AIP_FISCAL_YEAR ?> AIP Preparation</h2></div>
@@ -81,7 +85,7 @@ $showProgress = !empty($queue['showProgress']);
                     $fields[] = ['Physical progress', $ppa['progress'] . '%'];
                     $fields[] = ['Amount utilized', peso($ppa['utilized'])];
                 }
-                $detail = ['eyebrow' => $queue['title'], 'title' => $ppa['title'], 'fields' => $fields, 'note' => $queue['note']];
+                $detail = ['eyebrow' => $queue['title'], 'title' => $ppa['title'], 'fields' => $fields, 'note' => ($canAct && $ppa['state'] === 'pending') ? $queue['note'] : ''];
             ?>
                 <tr data-row data-state="<?= $ppa['state'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
                     <td><?= e($ppa['ref']) ?></td>
@@ -90,7 +94,7 @@ $showProgress = !empty($queue['showProgress']);
                     <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
                     <?php if ($showProgress): ?><td data-export="<?= $ppa['progress'] ?>%"><div class="table-progress"><div class="progress-track"><span style="width:<?= (int) $ppa['progress'] ?>%"></span></div><b><?= (int) $ppa['progress'] ?>%</b></div></td><?php endif; ?>
                     <td><?= statusPill($ppa['status']) ?></td>
-                    <td><button class="review-action" type="button" data-detail="<?= e(json_encode($detail)) ?>"><?= e($ppa['state'] === 'pending' ? $queue['actionLabel'] : 'View') ?></button></td>
+                    <td><button class="review-action" type="button" data-detail="<?= e(json_encode($detail)) ?>"><?= e($canAct && $ppa['state'] === 'pending' ? $queue['actionLabel'] : 'View') ?></button></td>
                 </tr>
             <?php endforeach; ?>
                 <tr data-empty hidden><td class="empty-cell" colspan="<?= $showProgress ? 7 : 6 ?>">No records match the current view or filters.</td></tr>

@@ -2,6 +2,7 @@
 $pageTitle = 'Review Workflow';
 $pageSection = 'Workflow';
 $activePage = 'review';
+$requiredPermission = 'review.view';
 $assetPrefix = '../';
 include '../includes/header.php';
 
@@ -15,6 +16,7 @@ $queue = [
     'pendingHeading'   => 'Pending Evaluations',
     'processedHeading' => 'Processed Evaluations',
     'actionLabel'      => 'Review',
+    'actPermission'    => 'review.act',
     'note'             => 'Development version: "Return for revision" and "Recommend for approval" will be added in the review workflow stage.',
 ];
 include '../includes/workflow-queue.php';

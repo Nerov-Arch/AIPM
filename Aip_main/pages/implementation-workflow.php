@@ -2,6 +2,7 @@
 $pageTitle = 'Implementation Workflow';
 $pageSection = 'Workflow';
 $activePage = 'implementation';
+$requiredPermission = 'implementation.view';
 $assetPrefix = '../';
 include '../includes/header.php';
 

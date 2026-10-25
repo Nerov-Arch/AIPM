@@ -157,3 +157,104 @@ dialog::backdrop { background:#081c3366; }
     .form-dialog .form-grid { grid-template-columns:1fr; }
     .dev-banner span { display:none; }
 }
+
+/* ============================================================
+ * User Management module
+ * ============================================================ */
+.alert.info { color:#2c5f9e; background:var(--blue-soft); border:1px solid #cfe0fa; }
+.alert a { color:inherit; font-weight:700; text-decoration:underline; }
+.temp-password { display:inline-block; margin:0 4px; padding:2px 8px; border-radius:4px; color:var(--ink); background:#fff; border:1px dashed #9cc7b7; font-family:Consolas,'Courier New',monospace; font-size:12px; font-weight:700; letter-spacing:.04em; user-select:all; }
+
+/* Top bar user menu */
+a.user-menu { padding:4px 6px; border-radius:6px; }
+a.user-menu:hover { background:#f3f6f9; }
+.user-name small { display:block; color:#93a1b0; font-size:9px; font-weight:500; }
+
+/* Tabs */
+.tab-bar { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+.tab-bar button { margin-bottom:-1px; padding:10px 14px; border:0; border-bottom:2px solid transparent; color:#7a8b9e; background:transparent; font-size:11px; font-weight:700; }
+.tab-bar button:hover { color:var(--ink); }
+.tab-bar button.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+/* Users table */
+.user-table td { white-space:nowrap; }
+.row-actions { display:flex; flex-wrap:wrap; align-items:center; gap:2px; }
+.row-actions form { margin:0; }
+.row-actions .text-button { min-height:28px; padding:0 8px; }
+.danger-text { color:#c0434b !important; }
+.danger-text:hover { background:#fdecee !important; }
+.you-badge { margin-left:6px; padding:1px 6px; border-radius:8px; color:#fff; background:var(--blue); font-size:8px; font-style:normal; font-weight:700; vertical-align:1px; }
+.muted-avatar { background:#aab6c3; }
+.user-stats .stat-card p { line-height:1.4; }
+
+/* Roles */
+.role-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:18px; }
+.role-card h2 { margin:0; font-family:'Manrope',sans-serif; font-size:15px; }
+.role-card-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.role-card .muted { font-size:11px; line-height:1.5; }
+.role-card ul { margin:14px 0 0; padding:0; list-style:none; display:grid; gap:6px; }
+.role-card li { position:relative; padding-left:18px; color:#3d5872; font-size:11px; }
+.role-card li::before { content:'✓'; position:absolute; left:0; color:var(--green); font-weight:700; }
+.role-card li.scope-note { color:#8291a1; }
+.role-card li.scope-note::before { content:'◐'; color:var(--amber); }
+.matrix-table td, .matrix-table th { text-align:center; }
+.matrix-table td:first-child, .matrix-table th:first-child { text-align:left; }
+.matrix-yes { color:var(--green); font-size:14px; font-weight:700; }
+.matrix-no { color:#c3ccd6; }
+
+/* Audit table */
+.audit-table td { white-space:nowrap; }
+.audit-table td.title-cell { white-space:normal; min-width:240px; }
+
+/* User form */
+.user-form-layout { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:18px; align-items:start; }
+.user-form-layout > .form-actions, .user-form-layout > .record-meta { grid-column:1 / -1; }
+.user-form-layout .form-actions { display:flex; justify-content:flex-end; gap:10px; }
+.role-options { display:grid; gap:8px; margin:0 0 16px; padding:0; border:0; }
+.role-options legend { margin-bottom:8px; color:#536b84; font-size:10px; font-weight:700; }
+.role-options legend em { color:#db6a51; font-style:normal; }
+.form-panel label.role-option { display:flex !important; gap:10px; align-items:flex-start; margin:0 !important; padding:10px 12px; border:1px solid var(--line); border-radius:7px; cursor:pointer; font-weight:400 !important; }
+.form-panel label.role-option:has(input:checked) { border-color:var(--blue); background:var(--blue-soft); }
+.form-panel .role-option input { width:auto; height:auto; margin:3px 0 0; accent-color:var(--blue); }
+.role-option strong { display:block; color:var(--ink); font-size:12px; }
+.role-option small { display:block; margin-top:2px; color:#7a8b9e; font-size:10px; line-height:1.45; }
+.role-options[disabled] .role-option { cursor:not-allowed; opacity:.7; }
+.page-heading .eyebrow a:hover { text-decoration:underline; }
+
+/* My account */
+.account-layout { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:18px; align-items:start; }
+.account-layout .form-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+
+/* Access denied */
+.forbidden-panel { max-width:620px; margin:40px auto; padding:34px; text-align:center; }
+.forbidden-panel h1 { margin:0 0 10px; font-family:'Manrope',sans-serif; font-size:21px; }
+.forbidden-panel .primary-button { margin-top:18px; }
+
+/* Login: development accounts */
+.alert.info { margin-bottom:13px; }
+.dev-accounts { margin-top:18px; padding:12px 14px; border:1px dashed #e8cf98; border-radius:8px; background:#fffaf0; font-size:10px; color:#7a4f00; }
+.dev-accounts summary { cursor:pointer; font-weight:700; }
+.dev-accounts p { margin:8px 0; }
+.dev-accounts ul { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0; padding:0; list-style:none; }
+.dev-accounts button { width:100%; padding:7px 9px; border:1px solid #f0dfb8; border-radius:6px; color:var(--ink); background:#fff; text-align:left; font-size:10px; }
+.dev-accounts button:hover { border-color:var(--blue); }
+.dev-accounts button strong, .dev-accounts button span { display:block; }
+.dev-accounts button span { color:#8291a1; font-size:9px; }
+
+@media (max-width:900px) {
+    .user-form-layout, .account-layout { grid-template-columns:1fr; }
+}
+@media (max-width:760px) {
+    .dev-accounts ul { grid-template-columns:1fr; }
+    .tab-bar button { flex:1 1 auto; }
+}
+
+/* Layout fixes for user management tables */
+.filter-bar .text-button { width:auto; margin:0; }
+.row-actions { flex-wrap:nowrap; gap:0; }
+.row-actions .text-button { display:inline-flex; align-items:center; width:auto; margin:0; white-space:nowrap; }
+.user-table td:last-child { width:1%; }
+.matrix-table td { height:auto !important; padding-top:9px; padding-bottom:9px; }
+.primary-nav { align-content:start; }
+.form-panel form > label { display:block; margin:0 0 15px; color:#536b84; font-size:10px; font-weight:700; }
+.form-panel form > label em { color:#db6a51; font-style:normal; }

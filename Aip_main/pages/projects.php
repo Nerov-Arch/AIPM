@@ -2,13 +2,15 @@
 $pageTitle = 'Project Encoding';
 $pageSection = 'Planning';
 $activePage = 'projects';
+$requiredPermission = 'ppa.encode';
 $assetPrefix = '../';
 
 require_once '../includes/auth.php';
 requireLogin($assetPrefix);
-require_once '../includes/mock-data.php';
+requirePermission($requiredPermission, $assetPrefix);
 
-$offices = mockOffices();
+// Encoders may only encode PPAs for their own office.
+$offices = array_filter(mockOffices(), fn ($name, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
 $fundSources = mockFundSources();
 $ppaTypes = mockPpaTypes();
 $fyStart = AIP_FISCAL_YEAR . '-01-01';
@@ -94,6 +96,7 @@ function validatePpa(array $input, bool $isDraft, array $offices, array $fundSou
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrf();
     $fields = ['project_title', 'ppa_type', 'implementing_office', 'program', 'description', 'expected_output', 'estimated_cost', 'fund_source', 'start_date', 'completion_date'];
     foreach ($fields as $field) {
         $old[$field] = trim((string) ($_POST[$field] ?? ''));
@@ -111,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Fund source'         => $old['fund_source'] ? $fundSources[$old['fund_source']]['name'] : '—',
             'Schedule'            => ($old['start_date'] === '' && $old['completion_date'] === '') ? '—' : displayDate($old['start_date']) . ' – ' . displayDate($old['completion_date']),
         ];
+        auditLog($isDraft ? 'ppa.draft_checked' : 'ppa.submit_checked', $old['project_title'], 'Validated only; not stored (no database yet)');
         // MOCK: nothing is stored. In the database phase this is where the PPA is saved
         // and, for submissions, its status is set to "Pending Review".
         if ($result === 'submitted') {
@@ -145,6 +149,7 @@ include '../includes/header.php';
 <?php endif; ?>
 
 <form method="post" class="encoding-form" data-encoding-form data-validate data-draft-required="project_title" novalidate>
+    <?= csrfField() ?>
     <div class="encoding-main">
         <section class="panel form-panel">
             <div class="form-section-heading"><span class="section-icon blue-bg">ⓘ</span><div><h2>General Identification</h2><p>Provide the basic details of the proposed investment.</p></div></div>
@@ -160,7 +165,7 @@ include '../includes/header.php';
         <section class="panel form-panel">
             <div class="form-section-heading"><span class="section-icon blue-bg">▦</span><div><h2>Implementation &amp; Logistics</h2><p>Identify the responsible office.</p></div></div>
             <div class="form-divider"></div>
-            <label>Implementing Office <em>*</em><select name="implementing_office" required><option value="">Select department/office</option><?php foreach ($offices as $code => $name): ?><option value="<?= e($code) ?>" <?= ($old['implementing_office'] ?? '') === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><small class="field-error" data-error-for="implementing_office"><?= e($errors['implementing_office'] ?? '') ?></small></label>
+            <label>Implementing Office <em>*</em><select name="implementing_office" required><option value="">Select department/office</option><?php foreach ($offices as $code => $name): ?><option value="<?= e($code) ?>" <?= ($old['implementing_office'] ?? (count($offices) === 1 ? $code : '')) === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><?php if (count($offices) === 1): ?><small>PPAs are encoded under your assigned office.</small><?php endif; ?><small class="field-error" data-error-for="implementing_office"><?= e($errors['implementing_office'] ?? '') ?></small></label>
         </section>
     </div>
     <div class="encoding-side">

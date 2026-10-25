@@ -2,13 +2,14 @@
 $pageTitle = 'Project Linking & Traceability';
 $pageSection = 'Planning';
 $activePage = 'linking';
+$requiredPermission = 'linking.view';
 $assetPrefix = '../';
 include '../includes/header.php';
 
 // MOCK: link status is derived from the sample records.
 $approvedStatuses = ['approved', 'ongoing', 'completed'];
 $links = [];
-foreach (mockPpas() as $ppa) {
+foreach (visiblePpas() as $ppa) {   // Encoders see only their own office
     if ($ppa['record'] !== '') {
         $link = 'linked';
     } elseif (in_array($ppa['status'], $approvedStatuses, true)) {
