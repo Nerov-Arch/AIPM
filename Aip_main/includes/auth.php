@@ -22,6 +22,7 @@ require_once __DIR__ . '/funds.php';
 require_once __DIR__ . '/workflow.php';
 require_once __DIR__ . '/aip.php';
 require_once __DIR__ . '/links.php';
+require_once __DIR__ . '/dashboard.php';
 
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCK_SECONDS = 300;

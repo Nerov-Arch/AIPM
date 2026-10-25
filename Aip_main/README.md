@@ -28,7 +28,7 @@ The login page lists these accounts; click one to fill in the username.
 
 | Menu group | Page | File |
 |---|---|---|
-| — | Dashboard | `dashboard.php` |
+| — | Dashboard (live AIP overview, per role) | `dashboard.php` |
 | Planning | Project Encoding (My PPAs) | `pages/ppas.php` |
 | Planning | Encode / edit a PPA | `pages/projects.php` |
 | Planning | PPA record and status history | `pages/ppa-view.php` |
@@ -154,6 +154,23 @@ Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/ai
 
 Linking logic is in `includes/links.php`. Sample data includes an approved PPA with no record
 (PPA-2027-011) and an LDC resolution not yet linked, to demonstrate the checks.
+
+## Dashboard module
+
+| Feature | Status |
+|---|---|
+| Computed live from the stored records every time it loads; updates as users encode, review, approve and allocate | Done |
+| Key indicators: submitted PPAs, pending decisions (with overdue count), approved for the AIP (amount and approval rate), total proposed cost, implementation progress | Done |
+| Process pipeline: count and amount at every stage, each linked to its queue | Done |
+| Approval status chart (approved, pending, returned, disapproved) and average time in MPDO review and to final decision | Done |
+| Fund distribution: programmed and pending against each fund ceiling | Done |
+| Distribution by sector and by office (proposed vs approved), linked to office pages | Done |
+| Monitoring and compliance: overdue submissions, funding issues, link issues, approved PPAs without approval records, AIP readiness, oldest pending items | Done |
+| Recent activity timeline from PPA histories (what, which PPA, by whom, when) | Done |
+| Filters by office and sector; printable | Done |
+| Role-aware: encoders see their own office including drafts; MPDO roles see all offices; administrators also see accounts and access today | Enforced |
+
+Indicator logic is in `includes/dashboard.php`.
 
 ## What works now (no database needed)
 
