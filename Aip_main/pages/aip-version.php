@@ -52,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (!$errors) {
         aipFinalizeVersion($no, $resolution, $resolution !== '' ? $resolutionDate : '');
+        if ($resolution !== '') {
+            linkAipVersionToRecord($no, $resolution, $resolutionDate);
+        }
         auditLog('aip.finalize', 'Version ' . $no, $version['totals']['count'] . ' PPAs · ' . peso($version['totals']['cost']) . ($resolution !== '' ? ' · ' . $resolution : ''));
         flash('success', 'Version ' . $no . ' is now the final consolidated AIP for FY ' . AIP_FISCAL_YEAR . '.');
         header('Location: aip-version.php?no=' . $no);

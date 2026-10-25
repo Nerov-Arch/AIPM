@@ -72,10 +72,34 @@ include '../includes/header.php';
                 <dt>Implementing office</dt><dd><?= e(officeName($ppa['office'])) ?></dd>
                 <dt>Encoded by</dt><dd><?= e($ppa['created_by']) ?> on <?= e(date('M j, Y g:i A', strtotime($ppa['created_at']))) ?></dd>
                 <dt>Schedule</dt><dd><?= $ppa['start'] !== '' ? e(displayDate($ppa['start'])) . ' – ' . e(displayDate($ppa['end'])) : '—' ?></dd>
-                <dt>Approval record</dt><dd><?= $ppa['record'] !== '' ? e($ppa['record']) . ' (' . e(displayDate($ppa['recordDate'])) . ')' : 'None attached' ?></dd>
                 <?php if (in_array($ppa['status'], ['ongoing', 'completed'], true)): ?><dt>Physical progress</dt><dd><?= (int) $ppa['progress'] ?>% · <?= peso($ppa['utilized']) ?> utilized</dd><?php endif; ?>
             </dl>
         </section>
+        <?php if ($ppa['status'] !== 'draft'): $trace = ppaTrace($ppa); $linkState = ppaLinkStatus($ppa); ?>
+        <section class="panel form-panel" id="trace">
+            <div class="form-section-heading"><span class="section-icon green-bg">⛓</span><div><h2>Linked records</h2><p>Everything connected to this PPA</p></div>
+                <?php if (can('links.manage') && $linkState !== 'not-approved'): ?><a class="text-button heading-link" href="link-record.php?ref=<?= urlencode($ppa['ref']) ?>">Manage approval records</a><?php endif; ?></div>
+            <div class="form-divider"></div>
+            <div class="trace-grid">
+                <div><span class="stat-label">Implementing office</span><a class="trace-chip" href="office.php?code=<?= urlencode($trace['office']['code']) ?>"><?= e($trace['office']['name']) ?></a></div>
+                <div><span class="stat-label">Fund sources</span>
+                    <?php foreach ($trace['funds'] as $key => $amount): ?><?php if (can('funds.view')): ?><a class="trace-chip fund" href="fund-source.php?key=<?= urlencode($key) ?>"><?= e(fundName($key)) ?> · <?= e(pesoShort($amount)) ?></a><?php else: ?><span class="trace-chip fund"><?= e(fundName($key)) ?> · <?= e(pesoShort($amount)) ?></span><?php endif; ?><?php endforeach; ?>
+                    <?php if (!$trace['funds']): ?><span class="trace-chip missing">None</span><?php endif; ?>
+                </div>
+                <div><span class="stat-label">Approval records</span>
+                    <?php foreach ($trace['records'] as $r): ?><a class="trace-chip record" href="approval-record.php?no=<?= urlencode($r['no']) ?>"><?= e($r['no']) ?> · <?= e(displayDate($r['date'])) ?></a><?php endforeach; ?>
+                    <?php if (!$trace['records']): ?><span class="trace-chip <?= $linkState === 'missing' ? 'missing' : '' ?>"><?= $linkState === 'missing' ? 'Missing: approved without a record' : 'Not yet approved' ?></span><?php endif; ?>
+                </div>
+                <div><span class="stat-label">In AIP versions</span>
+                    <?php foreach ($trace['versions'] as $v): ?><?php if (can('consolidation.view')): ?><a class="trace-chip" href="aip-version.php?no=<?= $v['no'] ?>">Version <?= $v['no'] ?><?= $v['status'] === 'final' ? ' (final)' : '' ?></a><?php else: ?><span class="trace-chip">Version <?= $v['no'] ?><?= $v['status'] === 'final' ? ' (final)' : '' ?></span><?php endif; ?><?php endforeach; ?>
+                    <?php if (!$trace['versions']): ?><span class="trace-chip">Not yet in a saved version</span><?php endif; ?>
+                </div>
+                <div class="trace-people"><span class="stat-label">People</span>
+                    <?php foreach ($trace['people'] as $role => $person): ?><span class="trace-chip person"><b><?= e($role) ?>:</b> <?= e(explode(' (', $person['label'])[0]) ?><?= $person['user'] ? ' · ' . e($person['user']['role']) : '' ?></span><?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
     </div>
     <div class="ppa-view-side">
         <section class="panel form-panel">

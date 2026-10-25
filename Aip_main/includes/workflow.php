@@ -206,5 +206,10 @@ function applyWorkflowAction(array $ppa, string $action, array $input): array
     ][$action];
     $saved = storeSavePpa($update, $historyLabel, $remarks);
     auditLog($def['audit'], $ppa['ref'], $ppa['title'] . ($remarks !== '' ? ' · ' . $remarks : ''));
+    if ($action === 'approve' && $update['record'] !== '') {
+        // Register the resolution as an approval record and link it to this PPA.
+        linkPpaByRecordNumber($ppa['ref'], $update['record'], $update['recordDate']);
+        $saved = storeFindPpa($ppa['ref']);
+    }
     return [[], $saved];
 }

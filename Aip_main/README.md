@@ -32,7 +32,10 @@ The login page lists these accounts; click one to fill in the username.
 | Planning | Project Encoding (My PPAs) | `pages/ppas.php` |
 | Planning | Encode / edit a PPA | `pages/projects.php` |
 | Planning | PPA record and status history | `pages/ppa-view.php` |
-| Planning | Project Linking & Traceability | `pages/project-linking.php` |
+| Planning | Project Linking & Traceability (PPA links, approval records, offices, link checks) | `pages/project-linking.php` |
+| Planning | Manage a PPA's approval records | `pages/link-record.php` |
+| Planning | Approval record (register, view, edit) | `pages/approval-record.php` |
+| Planning | Implementing office and its linked records | `pages/office.php` |
 | Workflow | Review queue | `pages/review-workflow.php` |
 | Workflow | Evaluate / decide on a PPA | `pages/ppa-review.php` |
 | Workflow | Authorization queue | `pages/authorization-workflow.php` |
@@ -133,6 +136,25 @@ Workflow rules are in `includes/workflow.php`.
 
 Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/aip-table.php`.
 
+## Linking module
+
+| Feature | Status |
+|---|---|
+| Every PPA linked to its implementing office, fund sources (with amounts) and approval records | Done |
+| Approval records (SB/LDC resolutions, executive orders, memoranda) as their own records: number, type, date, subject; one record can cover many PPAs | Works (session store) |
+| Attach an existing record, register and attach a new one, or unlink (reason required); only approved PPAs can be linked | Works (session store) |
+| Approving a PPA with a resolution registers the record (or reuses an existing one) and links it automatically | Done |
+| Finalizing the AIP with a resolution links the record to the AIP version | Done |
+| Office pages: the office's PPAs, fund sources used, approval records and user accounts | Done |
+| Linked-records panel on every PPA: office, fund sources, approval records, AIP versions and the people who encoded, recommended and decided | Done |
+| Graph view of one PPA's connections | Done |
+| Link checks: approved PPAs without a record, records not linked to anything, records on unapproved PPAs, unknown or inactive fund sources, offices with open PPAs but no active encoder | Done |
+| Reviewers and Approvers manage records; Administrators view; Encoders see their own office only | Enforced |
+| Link changes recorded in the PPA history and activity log | Works (session store) |
+
+Linking logic is in `includes/links.php`. Sample data includes an approved PPA with no record
+(PPA-2027-011) and an LDC resolution not yet linked, to demonstrate the checks.
+
 ## What works now (no database needed)
 
 - Login, logout and protected pages (redirect to login from any folder).
@@ -153,13 +175,14 @@ Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/ai
 | Session-backed PPA records and status history | `includes/ppa.php` | `ppas` and `ppa_history` tables |
 | Session-backed fund sources and PPA allocations | `includes/funds.php` | `fund_sources` and `ppa_fund_allocations` tables |
 | Session-backed AIP versions | `includes/aip.php` | `aip_versions` and `aip_version_entries` tables |
+| Session-backed approval records and links | `includes/links.php` | `approval_records` and `ppa_approval_records` tables |
 | Shared development password `Dev@2026` and test-account list on the login page | `includes/mock-data.php`, `login.php` | Removed |
 | Fiscal year (`AIP_FISCAL_YEAR = 2027`) | `includes/helpers.php` | AIP cycle settings |
 
 ## Not yet available
 
 - Department and fiscal year management screens.
-- Approval-record attachments, progress updates.
+- Scanned copies of approval records (file upload), implementation progress updates.
 - Email delivery of temporary passwords (shown on screen to the administrator instead).
 
 ## Database placeholder
