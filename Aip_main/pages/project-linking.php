@@ -1,14 +1,116 @@
 <?php
 $pageTitle = 'Project Linking & Traceability';
-$activePage = 'projects';
+$pageSection = 'Planning';
+$activePage = 'linking';
 $assetPrefix = '../';
-$links = [
-    ['ref'=>'PPA-2024-001','title'=>'Construction of Central Evacuation Facility','program'=>'Disaster Risk Reduction Program','office'=>'Eng. Dept (CEO)','officer'=>'OIC: M. Rivera','fund'=>'20% Development Fund (2024)','cost'=>'₱15,000,000.00','record'=>'RES-24-089','recordNote'=>'SB Approved: Oct 12, 2023','status'=>'Fully Linked'],
-    ['ref'=>'PPA-2024-042','title'=>'Procurement of Medical Supplies for Rural Health','program'=>'Health Services Enhancement','office'=>'City Health Office','officer'=>'Dr. S. Castro','fund'=>'General Fund (MoOE)','cost'=>'₱2,500,000.00','record'=>'Pending Linkage','recordNote'=>'Attach Record','status'=>'Missing Link'],
-];
 include '../includes/header.php';
+
+// MOCK: link status is derived from the sample records.
+$approvedStatuses = ['approved', 'ongoing', 'completed'];
+$links = [];
+foreach (mockPpas() as $ppa) {
+    if ($ppa['record'] !== '') {
+        $link = 'linked';
+    } elseif (in_array($ppa['status'], $approvedStatuses, true)) {
+        $link = 'missing';
+    } else {
+        $link = 'not-approved';
+    }
+    $links[] = $ppa + ['link' => $link];
+}
+$linkLabels = ['linked' => 'Fully Linked', 'missing' => 'Missing Link', 'not-approved' => 'Not Yet Approved'];
+$linkClasses = ['linked' => 'approved', 'missing' => 'pending', 'not-approved' => 'inactive'];
+$query = trim($_GET['q'] ?? '');
+$tableId = 'linking-table';
 ?>
-<div class="page-heading linking-heading"><div><p class="eyebrow">Traceability</p><h1>Project Linking &amp; Traceability</h1><p class="muted">Track connections between programs, implementing offices, and funding sources.</p></div><div class="heading-actions"><div class="segmented-control view-switch"><button class="active" type="button" data-link-view="standard">Standard View</button><button type="button" data-link-view="graph">Graph View</button></div><button class="secondary-button" type="button" data-toast="Traceability filters are ready.">☷ Filter</button><button class="secondary-button" type="button" data-toast="Traceability report exported.">⇩ Export</button></div></div>
-<section class="panel linking-panel" data-link-standard><div class="table-wrap"><table class="activity-table linking-table"><thead><tr><th>Source PPA<br>(Program/Project/Activity)</th><th>Implementing<br>Office</th><th>Funding Source &amp; Allocation</th><th>Approval Record<br>ID</th><th>Status &amp; Action</th></tr></thead><tbody><?php foreach ($links as $link): ?><tr><td><span class="ref-pill"><?= htmlspecialchars($link['ref']) ?></span><strong><?= htmlspecialchars($link['title']) ?></strong><small class="table-subtext">▧ <?= htmlspecialchars($link['program']) ?></small></td><td><strong><?= htmlspecialchars($link['office']) ?></strong><small class="table-subtext"><?= htmlspecialchars($link['officer']) ?></small></td><td><strong class="fund-link">▥ <?= htmlspecialchars($link['fund']) ?></strong><strong class="table-cost"><?= htmlspecialchars($link['cost']) ?></strong></td><td><?php if ($link['status'] === 'Fully Linked'): ?><strong class="record-link"><?= htmlspecialchars($link['record']) ?></strong><small class="table-subtext"><?= htmlspecialchars($link['recordNote']) ?></small><?php else: ?><span class="pending-record"><?= htmlspecialchars($link['record']) ?></span><button class="attach-link" type="button" data-toast="Approval record attachment opened."><?= htmlspecialchars($link['recordNote']) ?></button><?php endif; ?></td><td><span class="status-pill <?= $link['status'] === 'Fully Linked' ? 'approved' : 'pending' ?>"><i></i><?= htmlspecialchars($link['status']) ?></span><button class="row-action" type="button" data-toast="More traceability actions opened.">⋮</button></td></tr><?php endforeach; ?></tbody></table></div><div class="pagination-bar"><span>Showing 1-2 of 156 Projects</span><div><button type="button">‹</button><button type="button">›</button></div></div></section>
-<section class="panel linking-graph" data-link-graph hidden><div class="panel-heading"><div><h2>Traceability graph</h2><p class="muted">Connections between selected PPAs and their responsible offices and funds.</p></div></div><div class="trace-graph"><div class="trace-node source"><span>PPA-2024-001</span><strong>Central Evacuation Facility</strong></div><div class="trace-connector"></div><div class="trace-node"><span>Implementing Office</span><strong>Engineering Dept.</strong></div><div class="trace-connector"></div><div class="trace-node fund"><span>Funding Source</span><strong>20% Development Fund</strong></div></div></section>
+<div class="page-heading linking-heading">
+    <div><p class="eyebrow">Traceability</p><h1>Project Linking &amp; Traceability</h1><p class="muted">Track connections between PPAs, implementing offices, funding sources and approval records.</p></div>
+    <div class="heading-actions">
+        <div class="segmented-control view-switch" role="group" aria-label="View">
+            <button class="active" type="button" data-view-group="linking" data-view-show="#linking-standard" aria-pressed="true">Standard View</button>
+            <button type="button" data-view-group="linking" data-view-show="#linking-graph" aria-pressed="false">Graph View</button>
+        </div>
+        <button class="secondary-button" type="button" data-toggle-target="#linking-filters">☷ Filter</button>
+        <button class="secondary-button" type="button" data-export-csv="ppa-traceability.csv" data-for="<?= $tableId ?>">⇩ Export</button>
+    </div>
+</div>
+
+<?php if ($query !== ''): ?>
+    <div class="alert success" role="status">Showing results for “<?= e($query) ?>”. <a href="project-linking.php">Clear search</a></div>
+<?php endif; ?>
+
+<div id="linking-standard">
+    <section class="panel linking-panel flush-panel" id="<?= $tableId ?>" data-table-panel data-page-size="6">
+        <div class="filter-bar" id="linking-filters" <?= $query === '' ? 'hidden' : '' ?>>
+            <label>Link status<select data-filter="link" data-for="<?= $tableId ?>"><option value="">All</option><?php foreach ($linkLabels as $value => $label): ?><option value="<?= $value ?>"><?= e($label) ?></option><?php endforeach; ?></select></label>
+            <label>Implementing office<select data-filter="office" data-for="<?= $tableId ?>"><option value="">All offices</option><?php foreach (mockOffices() as $code => $name): ?><option value="<?= e($code) ?>"><?= e($name) ?></option><?php endforeach; ?></select></label>
+            <label>Fund source<select data-filter="fund" data-for="<?= $tableId ?>"><option value="">All sources</option><?php foreach (mockFundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
+            <label>Search<input type="search" placeholder="Title, ref no., office..." value="<?= e($query) ?>" data-search data-for="<?= $tableId ?>"></label>
+            <button class="text-button" type="button" data-filter-reset data-for="<?= $tableId ?>">Clear filters</button>
+        </div>
+        <div class="table-wrap">
+            <table class="activity-table linking-table">
+                <thead><tr><th>Source PPA<br>(Program/Project/Activity)</th><th>Implementing<br>Office</th><th>Funding Source &amp; Allocation</th><th>Approval Record<br>ID</th><th>Status &amp; Action</th></tr></thead>
+                <tbody>
+                <?php foreach ($links as $ppa):
+                    $detail = [
+                        'eyebrow' => 'Traceability record',
+                        'title'   => $ppa['title'],
+                        'fields'  => [
+                            ['Reference no.', $ppa['ref']],
+                            ['Program', $ppa['program']],
+                            ['Implementing office', officeName($ppa['office'])],
+                            ['Responsible officer', $ppa['officer']],
+                            ['Fund source', fundName($ppa['fund'])],
+                            ['Allocation', peso($ppa['cost'])],
+                            ['PPA status', statusLabel($ppa['status'])],
+                            ['Approval record', $ppa['record'] !== '' ? $ppa['record'] . ' (' . displayDate($ppa['recordDate']) . ')' : 'None attached'],
+                            ['Link status', $linkLabels[$ppa['link']]],
+                        ],
+                    ];
+                ?>
+                    <tr data-row data-link="<?= $ppa['link'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
+                        <td class="title-cell" data-export="<?= e($ppa['ref'] . ' — ' . $ppa['title']) ?>"><span class="ref-pill"><?= e($ppa['ref']) ?></span><strong><?= e($ppa['title']) ?></strong><small class="table-subtext">▧ <?= e($ppa['program']) ?></small></td>
+                        <td data-export="<?= e(officeName($ppa['office'])) ?>"><strong><?= e($ppa['office']) ?></strong><small class="table-subtext"><?= e($ppa['officer']) ?></small></td>
+                        <td data-export="<?= e(fundName($ppa['fund']) . ' — ' . number_format($ppa['cost'], 2, '.', '')) ?>"><strong class="fund-link">▥ <?= e(fundName($ppa['fund'])) ?></strong><strong class="table-cost"><?= peso($ppa['cost']) ?></strong></td>
+                        <td data-export="<?= e($ppa['record']) ?>">
+                            <?php if ($ppa['link'] === 'linked'): ?>
+                                <strong class="record-link"><?= e($ppa['record']) ?></strong><small class="table-subtext">SB approved: <?= e(displayDate($ppa['recordDate'])) ?></small>
+                            <?php elseif ($ppa['link'] === 'missing'): ?>
+                                <span class="pending-record">Pending linkage</span><button class="attach-link" type="button" data-toast="Attaching approval records will be available once file storage and the database are set up.">Attach Record</button>
+                            <?php else: ?>
+                                <span class="pending-record">Awaiting approval</span>
+                            <?php endif; ?>
+                        </td>
+                        <td data-export="<?= e($linkLabels[$ppa['link']]) ?>"><div class="status-action"><span class="status-pill <?= $linkClasses[$ppa['link']] ?>"><i></i><?= e($linkLabels[$ppa['link']]) ?></span><button class="row-action" type="button" aria-label="View details for <?= e($ppa['ref']) ?>" data-detail="<?= e(json_encode($detail)) ?>">⋮</button></div></td>
+                    </tr>
+                <?php endforeach; ?>
+                    <tr data-empty hidden><td class="empty-cell" colspan="5">No PPAs match your search or filters.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-bar" data-pager data-noun="PPAs"></div>
+    </section>
+</div>
+
+<section class="panel linking-graph" id="linking-graph" hidden>
+    <div class="panel-heading">
+        <div><h2>Traceability graph</h2><p class="muted">Choose a PPA to see how it connects to its office, fund source and approval record.</p></div>
+        <label class="visually-hidden" for="trace-select">PPA</label>
+        <select id="trace-select" class="small-select" data-trace-select>
+            <?php foreach ($links as $ppa): ?><option value="<?= e($ppa['ref']) ?>"><?= e($ppa['ref'] . ' — ' . $ppa['title']) ?></option><?php endforeach; ?>
+        </select>
+    </div>
+    <?php foreach ($links as $i => $ppa): ?>
+        <div class="trace-graph" data-trace="<?= e($ppa['ref']) ?>" <?= $i > 0 ? 'hidden' : '' ?>>
+            <div class="trace-node source"><span><?= e($ppa['ref']) ?></span><strong><?= e($ppa['title']) ?></strong></div>
+            <div class="trace-connector"></div>
+            <div class="trace-node"><span>Implementing Office</span><strong><?= e(officeName($ppa['office'])) ?></strong></div>
+            <div class="trace-connector"></div>
+            <div class="trace-node fund"><span>Funding Source</span><strong><?= e(fundName($ppa['fund'])) ?> · <?= e(pesoShort($ppa['cost'])) ?></strong></div>
+            <div class="trace-connector"></div>
+            <div class="trace-node <?= $ppa['link'] === 'linked' ? 'record' : 'missing' ?>"><span>Approval Record</span><strong><?= e($ppa['record'] !== '' ? $ppa['record'] : $linkLabels[$ppa['link']]) ?></strong></div>
+        </div>
+    <?php endforeach; ?>
+</section>
 <?php include '../includes/footer.php'; ?>

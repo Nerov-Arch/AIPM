@@ -1,5 +1,11 @@
 <?php
-session_start();
+/**
+ * DEV-ONLY login. The single hardcoded account below exists only so the
+ * interface can be tested before the database is connected. It is NOT
+ * secure production authentication and must be replaced in the database
+ * phase with hashed passwords stored in MySQL.
+ */
+require_once __DIR__ . '/includes/auth.php';
 
 if (isset($_SESSION['user'])) {
     header('Location: dashboard.php');
@@ -11,10 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $identity = trim($_POST['identity'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($identity === 'admin' && $password === 'admin123') {
+    if ($identity === 'admin' && $password === 'admin123') { // DEV-ONLY
+        session_regenerate_id(true);
         $_SESSION['user'] = [
             'name' => 'AIP Administrator',
             'identity' => $identity,
+            'role' => 'Administrator',
         ];
         header('Location: dashboard.php');
         exit;
@@ -39,9 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="visual-copy">
                     <p class="eyebrow">Annual Investment Program</p>
                     <h1>Plan with clarity.<br><em>Deliver with purpose.</em></h1>
-                    <p>A unified workspace for planning, reviewing, and delivering programs that move communities forward.</p>
+                    <p>A unified workspace for the Municipal Planning and Development Office of Indang, Cavite to plan, review and deliver the Annual Investment Program.</p>
                 </div>
-                <div class="visual-footer"><span><i class="status-dot"></i>System operational</span><span>2025 Program Cycle</span></div>
+                <div class="visual-footer"><span><i class="status-dot"></i>Development version</span><span>FY 2027 AIP Cycle</span></div>
             </div>
             <div class="blueprint-shape shape-one"></div><div class="blueprint-shape shape-two"></div><div class="blueprint-shape shape-three"></div>
         </section>
@@ -52,14 +60,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if ($error): ?><div class="alert error" role="alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
                 <form method="post" class="login-form">
                     <label for="identity">Email or username</label>
-                    <div class="input-wrap"><span>◉</span><input id="identity" name="identity" type="text" placeholder="username@government.gov" autocomplete="username" required></div>
+                    <div class="input-wrap"><span>◉</span><input id="identity" name="identity" type="text" placeholder="Username" autocomplete="username" required></div>
                     <label for="password">Password</label>
                     <div class="input-wrap"><span>▣</span><input id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle aria-label="Show password">◉</button></div>
-                    <div class="form-options"><label class="check-label"><input type="checkbox" name="remember"> <span>Remember this device</span></label><a href="#" data-forgot>Password help?</a></div>
+                    <div class="form-options"><span></span><a href="#" data-forgot>Password help?</a></div>
                     <button class="primary-button login-button" type="submit">Sign in to dashboard <span>→</span></button>
                 </form>
-                <div class="support-note"><span>ⓘ</span> Need assistance? <a href="mailto:support@example.gov">Contact IT support</a></div>
-                <p class="demo-note">Demo access: <strong>admin</strong> / <strong>admin123</strong></p>
+                <div class="support-note"><span>ⓘ</span> Need assistance? Contact the MPDO system administrator.</div>
+                <p class="demo-note">Development login: <strong>admin</strong> / <strong>admin123</strong> (sample data only)</p>
             </div>
             <p class="login-legal">Authorized personnel only. Activity may be monitored for security and compliance.</p>
         </section>

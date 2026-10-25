@@ -1,11 +1,21 @@
 <?php
 $pageTitle = 'Authorization Workflow';
-$activePage = 'review';
+$pageSection = 'Workflow';
+$activePage = 'authorization';
 $assetPrefix = '../';
-$projects = [['ref'=>'PRJ-1042','title'=>'City-wide Smart Street Lighting Upgrade','office'=>'Engineering Dept.','cost'=>'₱12,500,000.00'],['ref'=>'PRJ-1045','title'=>'Public Market Renovation Phase II','office'=>'Economic Enterprise','cost'=>'₱8,200,000.00'],['ref'=>'PRJ-1048','title'=>'Procurement of Rescue Vehicles','office'=>'Disaster Risk Mgmt.','cost'=>'₱15,000,000.00']];
 include '../includes/header.php';
-?>
-<div class="page-heading"><div><p class="eyebrow">Final approval</p><h1>Authorization Workflow</h1><p class="muted">Review and authorize project proposals for final implementation approval.</p></div><div class="segmented-control"><button class="active" type="button">Pending</button><button type="button">Processed</button></div></div>
-<section class="panel cycle-panel"><div class="panel-heading"><h2>Current Cycle: FY 2025 Preparation</h2></div><div class="cycle-stepper"><div class="cycle-step complete"><span>✓</span><b>Encoding</b></div><div class="cycle-line complete"></div><div class="cycle-step complete"><span>✓</span><b>Review</b></div><div class="cycle-line complete"></div><div class="cycle-step current"><span>3</span><b>Authorization</b></div><div class="cycle-line"></div><div class="cycle-step"><span>4</span><b>Implementation</b></div></div></section>
-<section class="panel review-table-panel"><div class="panel-heading"><h2>Pending Authorization (12)</h2><button class="filter-button" type="button" data-toast="Authorization filters are ready.">☷ Filter Options</button></div><div class="table-wrap"><table class="activity-table"><thead><tr><th>Ref #</th><th>Project Title</th><th>Implementing Office</th><th>Estimated Cost</th><th>Status</th><th>Actions</th></tr></thead><tbody><?php foreach ($projects as $project): ?><tr><td><?= htmlspecialchars($project['ref']) ?></td><td><strong><?= htmlspecialchars($project['title']) ?></strong></td><td><?= htmlspecialchars($project['office']) ?></td><td class="amount"><?= htmlspecialchars($project['cost']) ?></td><td><span class="status-pill pending"><i></i>Pending Authorization</span></td><td><button class="review-action" type="button" data-toast="<?= htmlspecialchars($project['ref']) ?> opened for authorization.">Review</button></td></tr><?php endforeach; ?></tbody></table></div><div class="pagination-bar"><span>Showing 1 to 3 of 12 entries</span><div><button type="button">‹</button><button class="current-page" type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">›</button></div></div></section>
-<?php include '../includes/footer.php'; ?>
+
+$queue = [
+    'eyebrow'          => 'Final approval',
+    'title'            => 'Authorization Workflow',
+    'description'      => 'Authorize PPAs recommended by the MPDO for inclusion in the Annual Investment Program.',
+    'step'             => 3,
+    'pending'          => ['recommended'],
+    'processed'        => ['approved', 'disapproved', 'ongoing', 'completed'],
+    'pendingHeading'   => 'Pending Authorization',
+    'processedHeading' => 'Authorized and Disapproved',
+    'actionLabel'      => 'Authorize',
+    'note'             => 'Development version: "Approve" and "Disapprove" will be added in the approval workflow stage.',
+];
+include '../includes/workflow-queue.php';
+include '../includes/footer.php';
