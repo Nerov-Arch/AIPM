@@ -19,6 +19,7 @@ require_once __DIR__ . '/mock-data.php';
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/ppa.php';
 require_once __DIR__ . '/funds.php';
+require_once __DIR__ . '/workflow.php';
 
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_LOCK_SECONDS = 300;

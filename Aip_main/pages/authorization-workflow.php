@@ -17,7 +17,7 @@ $queue = [
     'processedHeading' => 'Authorized and Disapproved',
     'actionLabel'      => 'Authorize',
     'actPermission'    => 'authorization.act',
-    'note'             => 'Development version: "Approve" and "Disapprove" will be added in the approval workflow stage.',
+    'decisionPage'     => true,
 ];
 include '../includes/workflow-queue.php';
 include '../includes/footer.php';

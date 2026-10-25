@@ -36,10 +36,15 @@ include '../includes/header.php';
         <?= statusPill($ppa['status']) ?>
         <button class="secondary-button" type="button" data-print>▣ Print</button>
         <?php if ($editable): ?><a class="primary-button" href="projects.php?ref=<?= urlencode($ppa['ref']) ?>"><?= $ppa['status'] === 'returned' ? 'Revise and resubmit' : 'Edit draft' ?></a><?php endif; ?>
+        <?php if (array_filter(workflowActionsFor($ppa), fn ($a) => $a['allowed'])): ?><a class="primary-button" href="ppa-review.php?ref=<?= urlencode($ppa['ref']) ?>"><?= $ppa['status'] === 'recommended' ? 'Decide' : 'Evaluate' ?></a><?php endif; ?>
     </div>
 </div>
 
-<?php if ($ppa['status'] === 'returned' && $ppa['remarks'] !== ''): ?>
+<?php if ($ppa['status'] !== 'draft') { include '../includes/stage-tracker.php'; } ?>
+
+<?php if ($ppa['status'] === 'disapproved'): ?>
+    <div class="alert error remarks-alert" role="status"><strong>Disapproved by <?= e($ppa['decided_by'] ?? 'the approver') ?><?= !empty($ppa['decided_at']) ? ' on ' . e(date('M j, Y', strtotime($ppa['decided_at']))) : '' ?>.</strong> <?= e($ppa['decision_remarks'] ?? '') ?></div>
+<?php elseif ($ppa['status'] === 'returned' && $ppa['remarks'] !== ''): ?>
     <div class="alert error remarks-alert" role="status"><strong>Returned by the MPDO for revision.</strong> <?= e($ppa['remarks']) ?></div>
 <?php elseif ($ppa['status'] === 'draft'): ?>
     <div class="alert info" role="status">This is a draft. Only <?= e(officeName($ppa['office'])) ?> can see it until it is submitted.</div>

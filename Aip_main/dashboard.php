@@ -51,6 +51,37 @@ $recent = array_slice($recent, 0, 5);
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Implementation progress</span><span class="stat-icon amber">◔</span></div><strong><?= $avgProgress ?>%</strong><p>Average of <?= count($inProgress) ?> ongoing and completed PPAs</p><div class="progress-track"><span style="width:<?= $avgProgress ?>%"></span></div></article>
 </section>
 
+<?php
+$awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evaluation.'
+    : (can('authorization.act') ? 'Recommended PPAs waiting for your final decision.'
+    : (can('ppa.encode') ? 'PPAs returned to your office for revision.' : ''));
+?>
+<?php if ($awaitingHint !== ''): ?>
+<section class="panel awaiting-panel" id="awaiting">
+    <div class="panel-heading"><div><h2>Awaiting your action <span class="count-badge"><?= count($awaiting) ?></span></h2><p class="muted"><?= e($awaitingHint) ?> Oldest first.</p></div></div>
+    <?php if (!$awaiting): ?>
+        <p class="empty-state">Nothing is waiting for you right now.</p>
+    <?php else: ?>
+        <div class="table-wrap"><table class="activity-table">
+            <thead><tr><th>Ref No.</th><th>PPA</th><th>Office</th><th>Status</th><th>Waiting</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach (array_slice($awaiting, 0, 6) as $item): $wait = daysInStatus($item); $link = $item['status'] === 'returned' ? 'pages/projects.php?ref=' : 'pages/ppa-review.php?ref='; ?>
+                <tr>
+                    <td><a class="ref-link" href="<?= $link . urlencode($item['ref']) ?>"><?= e($item['ref']) ?></a></td>
+                    <td class="title-cell"><strong><?= e($item['title']) ?></strong></td>
+                    <td><?= e($item['office']) ?></td>
+                    <td><?= statusPill($item['status']) ?></td>
+                    <td><span class="<?= $wait > WORKFLOW_OVERDUE_DAYS ? 'overdue-text' : 'table-subtext' ?>"><?= e(waitingLabel($wait)) ?><?= $wait > WORKFLOW_OVERDUE_DAYS ? ' · overdue' : '' ?></span></td>
+                    <td><a class="review-action" href="<?= $link . urlencode($item['ref']) ?>"><?= $item['status'] === 'returned' ? 'Revise' : ($item['status'] === 'recommended' ? 'Decide' : 'Evaluate') ?></a></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table></div>
+        <?php if (count($awaiting) > 6): ?><p class="form-note">And <?= count($awaiting) - 6 ?> more in the <?= can('authorization.act') ? 'Authorization' : (can('review.act') ? 'Review' : 'Project Encoding') ?> queue.</p><?php endif; ?>
+    <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <section class="dashboard-grid">
     <article class="panel approval-panel">
         <div class="panel-heading"><div><h2>Approval status</h2><p class="muted">PPA distribution by current stage</p></div><a href="pages/review-workflow.php">View workflow <span>→</span></a></div>

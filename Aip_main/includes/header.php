@@ -16,6 +16,7 @@ $pageSection = $pageSection ?? '';
 $activePage = $activePage ?? 'dashboard';
 $currentUser = currentUser();
 $flashes = takeFlashes();
+$awaiting = awaitingMyAction();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +49,7 @@ $flashes = takeFlashes();
                     <label class="visually-hidden" for="global-search">Search PPAs</label>
                     <input id="global-search" type="search" name="q" placeholder="Search PPAs, ref no., office..." value="<?= e($_GET['q'] ?? '') ?>">
                 </form>
-                <button class="icon-button" type="button" aria-label="Notifications" data-toast="No new notifications.">♧</button>
+                <a class="icon-button bell" href="<?= $assetPrefix ?>dashboard.php#awaiting" aria-label="<?= count($awaiting) ?> item<?= count($awaiting) === 1 ? '' : 's' ?> awaiting your action" title="<?= count($awaiting) ?> awaiting your action">♧<?php if ($awaiting): ?><b class="bell-count"><?= count($awaiting) > 99 ? '99+' : count($awaiting) ?></b><?php endif; ?></a>
                 <button class="icon-button" type="button" aria-label="Help" data-toast="Need help? Contact the MPDO system administrator.">?</button>
                 <a class="user-menu" href="<?= $assetPrefix ?>pages/account.php" title="My account">
                     <span class="avatar"><?= e(initials($currentUser['name'])) ?></span>

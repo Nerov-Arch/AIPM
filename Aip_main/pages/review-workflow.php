@@ -12,12 +12,12 @@ $queue = [
     'description'      => 'Evaluate submitted PPA proposals from implementing offices for the upcoming fiscal year.',
     'step'             => 2,
     'pending'          => ['for_review'],
-    'processed'        => ['returned', 'recommended', 'approved', 'disapproved', 'ongoing', 'completed'],
+    'processed'        => ['returned', 'recommended', 'approved', 'disapproved', 'ongoing', 'completed'],   // everything the MPDO has already acted on
     'pendingHeading'   => 'Pending Evaluations',
     'processedHeading' => 'Processed Evaluations',
     'actionLabel'      => 'Review',
     'actPermission'    => 'review.act',
-    'note'             => 'Development version: "Return for revision" and "Recommend for approval" will be added in the review workflow stage.',
+    'decisionPage'     => true,
 ];
 include '../includes/workflow-queue.php';
 include '../includes/footer.php';

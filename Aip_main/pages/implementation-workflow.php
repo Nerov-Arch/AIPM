@@ -16,7 +16,6 @@ $queue = [
     'pendingHeading'   => 'Awaiting Implementation',
     'processedHeading' => 'Ongoing and Completed',
     'actionLabel'      => 'View',
-    'note'             => 'Development version: progress updates will be recorded once the database is connected.',
     'showProgress'     => true,
 ];
 include '../includes/workflow-queue.php';

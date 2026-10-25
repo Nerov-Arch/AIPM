@@ -33,8 +33,9 @@ The login page lists these accounts; click one to fill in the username.
 | Planning | Encode / edit a PPA | `pages/projects.php` |
 | Planning | PPA record and status history | `pages/ppa-view.php` |
 | Planning | Project Linking & Traceability | `pages/project-linking.php` |
-| Workflow | Review | `pages/review-workflow.php` |
-| Workflow | Authorization | `pages/authorization-workflow.php` |
+| Workflow | Review queue | `pages/review-workflow.php` |
+| Workflow | Evaluate / decide on a PPA | `pages/ppa-review.php` |
+| Workflow | Authorization queue | `pages/authorization-workflow.php` |
 | Workflow | Implementation | `pages/implementation-workflow.php` |
 | Reports & Funds | AIP Consolidation | `pages/aip-consolidation.php` |
 | Reports & Funds | Fund Monitoring (sources, PPA funding, issues) | `pages/fund-monitoring.php` |
@@ -96,6 +97,23 @@ PPA fields, rules and storage are in `includes/ppa.php`.
 Fund logic is in `includes/funds.php`. Sample data includes one under-allocated PPA (PPA-2027-013)
 and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrate the checks.
 
+## Review and Approval module
+
+| Feature | Status |
+|---|---|
+| Sequence: Encoder submits → Reviewer (MPDO) returns or recommends → Approver approves, disapproves or sends back | Works (session store) |
+| Review checklist (all items required to recommend); remarks required to return, disapprove or send back | Enforced |
+| Optional Sangguniang Bayan resolution number and date on approval, shown in Project Linking | Works (session store) |
+| Approval blocked when the PPA has funding issues or would push a fund over its ceiling; recommendation blocked by funding errors | Enforced |
+| Separation of duties: no one acts on a PPA they encoded; the person who recommended a PPA cannot approve or disapprove it | Enforced |
+| Only the right role at the right stage can act; every other attempt is refused on the server | Enforced |
+| Stage tracker on every PPA: current stage, who it is waiting on, days in status | Done |
+| Queues sorted oldest first with days waiting; items over 7 days flagged as overdue | Done |
+| "Awaiting your action" on the dashboard and a count on the bell, per role | Done |
+| Every decision recorded in the PPA history and the activity log | Works (session store) |
+
+Workflow rules are in `includes/workflow.php`.
+
 ## What works now (no database needed)
 
 - Login, logout and protected pages (redirect to login from any folder).
@@ -120,7 +138,6 @@ and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrat
 
 ## Not yet available
 
-- MPDO review actions (return for revision, recommend) and approval actions (next modules).
 - Department and fiscal year management screens.
 - Approval-record attachments, progress updates.
 - Email delivery of temporary passwords (shown on screen to the administrator instead).

@@ -350,3 +350,42 @@ a.user-menu:hover { background:#f3f6f9; }
 .form-panel label.toggle-option input { width:auto; height:auto; margin:3px 0 0; }
 @media (max-width:760px) { .issue-list li { grid-template-columns:1fr; gap:6px; } }
 .allocation-table tfoot td, .allocation-table tfoot th { height:auto !important; padding-top:8px !important; padding-bottom:8px !important; }
+
+/* ============================================================
+ * Review and Approval module
+ * ============================================================ */
+.stage-tracker { margin-bottom:18px; padding:18px 22px; }
+.stage-steps { display:grid; grid-template-columns:auto 1fr auto 1fr auto 1fr auto; align-items:center; gap:12px; margin-bottom:16px; }
+.cycle-step.stopped { color:#c0434b; }
+.cycle-step.stopped span { color:#fff; background:#d9575e; }
+.stage-summary { display:grid; grid-template-columns:repeat(3, auto) 1fr; gap:10px 28px; align-items:end; padding-top:14px; border-top:1px solid #edf0f4; }
+.stage-summary > div { display:grid; gap:5px; justify-items:start; }
+.stage-summary strong { color:var(--ink); font-size:12px; }
+.stage-note { justify-self:end !important; color:#7a8b9e; font-size:11px; text-align:right; }
+.overdue-text { color:#c0434b !important; font-weight:700; }
+.review-action.quiet { color:#55708c; background:#f1f4f8; }
+.review-action { display:inline-block; }
+.review-layout { display:grid; grid-template-columns:minmax(0, 1.45fr) minmax(320px, 1fr); gap:18px; align-items:start; }
+.review-main, .review-side { display:grid; gap:18px; }
+.decision-panel { position:sticky; top:18px; }
+.decision-form { display:grid; gap:14px; }
+.checklist { display:grid; gap:4px; margin:0; padding:0; border:0; }
+.checklist legend, .legend-like { margin:0 0 6px; color:#536b84; font-size:10px; font-weight:700; }
+.checklist legend small, .legend-like small, .remarks-label small { color:#93a1b0; font-weight:400; }
+.checklist .check-option { align-items:flex-start !important; margin:0 !important; padding:8px 10px; border:1px solid var(--line); border-radius:6px; color:#3d5872; font-size:11px; }
+.checklist .check-option:has(input:checked) { border-color:#bfe9db; background:var(--green-soft); }
+.form-panel .checklist .check-option input { width:auto; height:auto; margin:2px 0 0; }
+.approval-record { display:grid; grid-template-columns:1fr 150px; gap:6px 10px; }
+.approval-record .legend-like { grid-column:1 / -1; }
+.decision-form label { display:block; color:#536b84; font-size:10px; font-weight:700; }
+.decision-buttons { display:grid; gap:8px; }
+.decision-buttons button { width:100%; }
+.danger-button { color:#c0434b !important; border-color:#f3c6ca !important; }
+.danger-button:hover { background:#fff0f1 !important; }
+.remark-quote { margin:12px 0 0; padding:12px 14px; border-left:3px solid var(--amber); border-radius:4px; color:#5c4416; background:#fffaf0; font-size:11px; white-space:pre-wrap; }
+.awaiting-panel { margin-bottom:22px; }
+.awaiting-panel .count-badge { vertical-align:3px; }
+a.icon-button { display:inline-grid; place-items:center; }
+.bell-count { position:absolute; top:-3px; right:-8px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; color:#fff; background:#e25e64; font-size:8px; font-weight:800; line-height:16px; text-align:center; }
+@media (max-width:1000px) { .review-layout { grid-template-columns:1fr; } .decision-panel { position:static; } }
+@media (max-width:760px) { .stage-summary { grid-template-columns:1fr 1fr; } .stage-note { grid-column:1 / -1; justify-self:start !important; text-align:left; } .stage-steps { gap:5px; } }

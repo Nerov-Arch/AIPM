@@ -69,6 +69,15 @@
         });
     });
 
+    // Ask before a decision button submits (e.g. Approve, Return for revision)
+    $$('form').forEach(function (form) {
+        if (form.hasAttribute('data-validate')) return;   // validated forms confirm in their own handler
+        form.addEventListener('submit', function (event) {
+            var text = event.submitter && event.submitter.getAttribute('data-confirm-action');
+            if (text && !window.confirm(text)) event.preventDefault();
+        });
+    });
+
     // Ask before submitting forms that change an account
     $$('form[data-confirm]').forEach(function (form) {
         form.addEventListener('submit', function (event) {

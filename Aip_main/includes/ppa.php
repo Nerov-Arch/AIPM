@@ -133,7 +133,7 @@ function storeSavePpa(array $data, string $historyAction, string $remarks = ''):
 
     if (empty($data['ref'])) {
         $data['ref'] = nextPpaRef();
-        $data += ['created_by' => $actorName, 'created_at' => $now, 'history' => [], 'remarks' => '', 'progress' => 0, 'utilized' => 0,
+        $data += ['created_by' => $actorName, 'created_by_id' => $actor['id'] ?? null, 'created_at' => $now, 'history' => [], 'remarks' => '', 'progress' => 0, 'utilized' => 0,
                   'record' => '', 'recordDate' => '', 'officer' => $actor['name'] ?? '', 'submitted_at' => ''];
     }
     $existing = $_SESSION['mock_store']['ppas'][$data['ref']] ?? [];
