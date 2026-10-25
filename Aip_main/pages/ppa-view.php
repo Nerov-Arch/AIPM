@@ -74,7 +74,7 @@ include '../includes/header.php';
     </div>
     <div class="ppa-view-side">
         <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon amber-bg">₱</span><div><h2>Cost and Funding</h2><p><?= e($ppa['fund'] !== '' ? fundName($ppa['fund']) : 'Fund source not set') ?></p></div></div>
+            <div class="form-section-heading"><span class="section-icon amber-bg">₱</span><div><h2>Cost and Funding</h2><p>Primary fund: <?= e($ppa['fund'] !== '' ? fundName($ppa['fund']) : 'not set') ?></p></div></div>
             <div class="form-divider"></div>
             <table class="cost-table">
                 <tr><th>Personal Services</th><td><?= peso((float) $ppa['ps']) ?></td></tr>
@@ -82,6 +82,18 @@ include '../includes/header.php';
                 <tr><th>Capital Outlay</th><td><?= peso((float) $ppa['co']) ?></td></tr>
                 <tr class="cost-total"><th>Total estimated cost</th><td><?= peso($ppa['cost']) ?></td></tr>
             </table>
+            <div class="form-divider"></div>
+            <div class="allocation-head"><h3>Fund allocation</h3><?php if (can('funds.manage') && $ppa['status'] !== 'draft'): ?><a class="text-button" href="ppa-funding.php?ref=<?= urlencode($ppa['ref']) ?>">Edit allocation</a><?php endif; ?></div>
+            <table class="cost-table">
+                <?php foreach (ppaAllocations($ppa) as $fundKey => $amount): ?>
+                    <tr><th><?php if (can('funds.view')): ?><a href="fund-source.php?key=<?= urlencode($fundKey) ?>"><?= e(fundName($fundKey)) ?></a><?php else: ?><?= e(fundName($fundKey)) ?><?php endif; ?></th><td><?= peso($amount) ?> <small class="table-subtext"><?= $ppa['cost'] > 0 ? number_format($amount / $ppa['cost'] * 100, 1) : '0.0' ?>%</small></td></tr>
+                <?php endforeach; ?>
+                <?php if (!ppaAllocations($ppa)): ?><tr><th colspan="2">No fund source assigned</th></tr><?php endif; ?>
+                <tr class="cost-total"><th>Total allocated</th><td><?= peso(ppaAllocatedTotal($ppa)) ?></td></tr>
+            </table>
+            <?php foreach (ppaFundingIssues($ppa['ref']) as $issue): ?>
+                <p class="funding-issue <?= $issue['level'] ?>"><strong><?= e($issue['type']) ?>:</strong> <?= e($issue['message']) ?></p>
+            <?php endforeach; ?>
             <?php if ($ccTotal > 0): ?>
                 <div class="form-divider"></div>
                 <table class="cost-table">

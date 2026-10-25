@@ -59,7 +59,7 @@ $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . o
     </div>
     <div class="filter-bar" id="queue-filters" hidden>
         <label>Implementing office<select data-filter="office" data-for="<?= $queueId ?>"><option value="">All offices</option><?php foreach ($officesInQueue as $code): ?><option value="<?= e($code) ?>"><?= e(officeName($code)) ?></option><?php endforeach; ?></select></label>
-        <label>Fund source<select data-filter="fund" data-for="<?= $queueId ?>"><option value="">All sources</option><?php foreach (mockFundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
+        <label>Fund source<select data-filter="fund" data-for="<?= $queueId ?>"><option value="">All sources</option><?php foreach (fundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
         <label>Search<input type="search" placeholder="Title or ref no." data-search data-for="<?= $queueId ?>"></label>
         <button class="text-button" type="button" data-filter-reset data-for="<?= $queueId ?>">Clear filters</button>
     </div>
@@ -74,7 +74,7 @@ $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . o
                     ['Program', $ppa['program']],
                     ['Implementing office', officeName($ppa['office'])],
                     ['Responsible officer', $ppa['officer']],
-                    ['Fund source', fundName($ppa['fund'])],
+                    ['Fund source', ppaFundLabel($ppa)],
                     ['Estimated cost', peso($ppa['cost'])],
                     ['Schedule', displayDate($ppa['start']) . ' – ' . displayDate($ppa['end'])],
                     ['Status', statusLabel($ppa['status'])],
@@ -89,7 +89,7 @@ $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . o
             ?>
                 <tr data-row data-state="<?= $ppa['state'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
                     <td><?= e($ppa['ref']) ?></td>
-                    <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><a class="title-link" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext"><?= e($ppa['type']) ?> · <?= e(fundName($ppa['fund'])) ?></small></td>
+                    <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><a class="title-link" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext"><?= e($ppa['type']) ?> · <?= e(ppaFundLabel($ppa)) ?></small></td>
                     <td data-export="<?= e(officeName($ppa['office'])) ?>"><?= e($ppa['office']) ?></td>
                     <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
                     <?php if ($showProgress): ?><td data-export="<?= $ppa['progress'] ?>%"><div class="table-progress"><div class="progress-track"><span style="width:<?= (int) $ppa['progress'] ?>%"></span></div><b><?= (int) $ppa['progress'] ?>%</b></div></td><?php endif; ?>

@@ -112,7 +112,7 @@ include '../includes/header.php';
                     <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><strong><?= e($ppa['title'] !== '' ? $ppa['title'] : '(untitled)') ?></strong><small class="table-subtext"><?= e($ppa['type'] ?: 'Type not set') ?><?= $ppa['program'] !== '' ? ' · ' . e($ppa['program']) : '' ?></small></td>
                     <td data-export="<?= e($ppa['start'] . ' to ' . $ppa['end']) ?>"><?= $ppa['start'] !== '' ? e(date('M Y', strtotime($ppa['start']))) . ' – ' . e($ppa['end'] !== '' ? date('M Y', strtotime($ppa['end'])) : '?') : '<span class="table-subtext">Not set</span>' ?></td>
                     <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
-                    <td><?= $ppa['fund'] !== '' ? e(fundName($ppa['fund'])) : '<span class="table-subtext">Not set</span>' ?></td>
+                    <td><?= $ppa['fund'] !== '' ? e(ppaFundLabel($ppa)) : '<span class="table-subtext">Not set</span>' ?></td>
                     <td><?= statusPill($ppa['status']) ?></td>
                     <td data-export="<?= e($ppa['updated_at']) ?>"><?= e(displayDate($ppa['updated'])) ?><small class="table-subtext"><?= e(explode(' (', $ppa['updated_by'])[0]) ?></small></td>
                     <td>

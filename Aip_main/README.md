@@ -37,7 +37,10 @@ The login page lists these accounts; click one to fill in the username.
 | Workflow | Authorization | `pages/authorization-workflow.php` |
 | Workflow | Implementation | `pages/implementation-workflow.php` |
 | Reports & Funds | AIP Consolidation | `pages/aip-consolidation.php` |
-| Reports & Funds | Fund Monitoring | `pages/fund-monitoring.php` |
+| Reports & Funds | Fund Monitoring (sources, PPA funding, issues) | `pages/fund-monitoring.php` |
+| Reports & Funds | Fund source detail | `pages/fund-source.php` |
+| Reports & Funds | Add / edit fund source | `pages/fund-form.php` |
+| Reports & Funds | PPA fund allocation | `pages/ppa-funding.php` |
 | Administration | User Management | `pages/users.php` |
 
 ## User Management module
@@ -77,6 +80,22 @@ log live in `includes/store.php`.
 
 PPA fields, rules and storage are in `includes/ppa.php`.
 
+## Fund Source Monitoring module
+
+| Feature | Status |
+|---|---|
+| Fund sources with short code, account code, category, description, FY ceiling and active status | Works (session store) |
+| Add, edit, activate/deactivate fund sources; delete only when no PPA uses them | Works (session store) |
+| Every PPA charged to one or more fund sources; MPDO can split a PPA's cost across sources (must equal the PPA cost, basis required) | Works (session store) |
+| Per-fund ceiling, programmed (approved), pending, available and utilized amounts, with a detail page per fund | Done |
+| Automatic funding checks: under/over-allocated PPAs, missing fund source, inactive or unknown source, primary fund not in split, over-utilization, fund over ceiling or at risk | Done |
+| Only active fund sources can be chosen when encoding | Enforced |
+| Administrators and Reviewers manage funds; Approvers view only; Encoders have no access | Enforced |
+| Fund and allocation changes recorded in the activity log and PPA history | Works (session store) |
+
+Fund logic is in `includes/funds.php`. Sample data includes one under-allocated PPA (PPA-2027-013)
+and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrate the checks.
+
 ## What works now (no database needed)
 
 - Login, logout and protected pages (redirect to login from any folder).
@@ -95,13 +114,14 @@ PPA fields, rules and storage are in `includes/ppa.php`.
 | Sample offices, fund sources, PPAs, starting users | `includes/mock-data.php` | Prepared-statement queries |
 | Session-backed user accounts and activity log | `includes/store.php` | `users` and `audit_logs` tables |
 | Session-backed PPA records and status history | `includes/ppa.php` | `ppas` and `ppa_history` tables |
+| Session-backed fund sources and PPA allocations | `includes/funds.php` | `fund_sources` and `ppa_fund_allocations` tables |
 | Shared development password `Dev@2026` and test-account list on the login page | `includes/mock-data.php`, `login.php` | Removed |
 | Fiscal year (`AIP_FISCAL_YEAR = 2027`) | `includes/helpers.php` | AIP cycle settings |
 
 ## Not yet available
 
 - MPDO review actions (return for revision, recommend) and approval actions (next modules).
-- Department, fund source and fiscal year management screens.
+- Department and fiscal year management screens.
 - Approval-record attachments, progress updates.
 - Email delivery of temporary passwords (shown on screen to the administrator instead).
 

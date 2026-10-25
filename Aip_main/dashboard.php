@@ -87,7 +87,7 @@ $recent = array_slice($recent, 0, 5);
             <?php foreach ($recent as $ppa):
                 $detail = ['eyebrow' => $ppa['ref'], 'title' => $ppa['title'], 'fields' => [
                     ['Type', $ppa['type']], ['Program', $ppa['program']], ['Implementing office', officeName($ppa['office'])],
-                    ['Fund source', fundName($ppa['fund'])], ['Estimated cost', peso($ppa['cost'])], ['Status', statusLabel($ppa['status'])],
+                    ['Fund source', ppaFundLabel($ppa)], ['Estimated cost', peso($ppa['cost'])], ['Status', statusLabel($ppa['status'])],
                     ['Schedule', displayDate($ppa['start']) . ' – ' . displayDate($ppa['end'])], ['Last updated', displayDate($ppa['updated'])],
                 ]];
             ?>

@@ -32,15 +32,19 @@ function mockOffices(): array
     ];
 }
 
-/** MOCK: fund sources with their annual ceiling for the AIP year. */
+/**
+ * MOCK: starting fund sources with their annual ceiling for the AIP year.
+ * Copied into the session store on first use (see includes/funds.php).
+ */
 function mockFundSources(): array
 {
     return [
-        'DF'     => ['name' => '20% Development Fund',            'code' => 'DF-20',  'ceiling' => 45000000],
-        'GF'     => ['name' => 'General Fund',                    'code' => 'GF-101', 'ceiling' => 30000000],
-        'LDRRMF' => ['name' => 'Local DRRM Fund',                 'code' => 'LDRRMF', 'ceiling' => 12000000],
-        'SEF'    => ['name' => 'Special Education Fund',          'code' => 'SEF-201','ceiling' => 8000000],
-        'TF'     => ['name' => 'Trust Fund',                      'code' => 'TF-301', 'ceiling' => 6000000],
+        'DF'     => ['name' => '20% Development Fund',   'code' => 'DF-20',   'category' => 'General Fund',         'ceiling' => 35000000, 'active' => true,  'description' => '20% of the IRA/NTA share set aside for development projects.'],
+        'GF'     => ['name' => 'General Fund',           'code' => 'GF-101',  'category' => 'General Fund',         'ceiling' => 30000000, 'active' => true,  'description' => 'Regular appropriations of the municipal general fund.'],
+        'LDRRMF' => ['name' => 'Local DRRM Fund',        'code' => 'LDRRMF',  'category' => 'Special Purpose Fund', 'ceiling' => 12000000, 'active' => true,  'description' => 'Local disaster risk reduction and management fund.'],
+        'SEF'    => ['name' => 'Special Education Fund', 'code' => 'SEF-201', 'category' => 'Special Purpose Fund', 'ceiling' => 8000000,  'active' => true,  'description' => 'Proceeds of the additional real property tax for education.'],
+        'TF'     => ['name' => 'Trust Fund',             'code' => 'TF-301',  'category' => 'Trust Fund',           'ceiling' => 6000000,  'active' => true,  'description' => 'Funds held in trust for specific purposes.'],
+        'LP'     => ['name' => 'Loan Proceeds',          'code' => 'LP-401',  'category' => 'External Source',      'ceiling' => 0,        'active' => false, 'description' => 'Proceeds of loans from government financial institutions (not used this year).'],
     ];
 }
 
@@ -122,5 +126,5 @@ function officeName(string $code): string
 /** Fund source name for a code. */
 function fundName(string $code): string
 {
-    return mockFundSources()[$code]['name'] ?? $code;
+    return fundSources()[$code]['name'] ?? $code;
 }

@@ -45,7 +45,7 @@ $tableId = 'linking-table';
         <div class="filter-bar" id="linking-filters" <?= $query === '' ? 'hidden' : '' ?>>
             <label>Link status<select data-filter="link" data-for="<?= $tableId ?>"><option value="">All</option><?php foreach ($linkLabels as $value => $label): ?><option value="<?= $value ?>"><?= e($label) ?></option><?php endforeach; ?></select></label>
             <label>Implementing office<select data-filter="office" data-for="<?= $tableId ?>"><option value="">All offices</option><?php foreach (mockOffices() as $code => $name): ?><option value="<?= e($code) ?>"><?= e($name) ?></option><?php endforeach; ?></select></label>
-            <label>Fund source<select data-filter="fund" data-for="<?= $tableId ?>"><option value="">All sources</option><?php foreach (mockFundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
+            <label>Fund source<select data-filter="fund" data-for="<?= $tableId ?>"><option value="">All sources</option><?php foreach (fundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
             <label>Search<input type="search" placeholder="Title, ref no., office..." value="<?= e($query) ?>" data-search data-for="<?= $tableId ?>"></label>
             <button class="text-button" type="button" data-filter-reset data-for="<?= $tableId ?>">Clear filters</button>
         </div>
@@ -62,7 +62,7 @@ $tableId = 'linking-table';
                             ['Program', $ppa['program']],
                             ['Implementing office', officeName($ppa['office'])],
                             ['Responsible officer', $ppa['officer']],
-                            ['Fund source', fundName($ppa['fund'])],
+                            ['Fund source', ppaFundLabel($ppa)],
                             ['Allocation', peso($ppa['cost'])],
                             ['PPA status', statusLabel($ppa['status'])],
                             ['Approval record', $ppa['record'] !== '' ? $ppa['record'] . ' (' . displayDate($ppa['recordDate']) . ')' : 'None attached'],
@@ -73,7 +73,7 @@ $tableId = 'linking-table';
                     <tr data-row data-link="<?= $ppa['link'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
                         <td class="title-cell" data-export="<?= e($ppa['ref'] . ' — ' . $ppa['title']) ?>"><span class="ref-pill"><?= e($ppa['ref']) ?></span><a class="title-link" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext">▧ <?= e($ppa['program']) ?></small></td>
                         <td data-export="<?= e(officeName($ppa['office'])) ?>"><strong><?= e($ppa['office']) ?></strong><small class="table-subtext"><?= e($ppa['officer']) ?></small></td>
-                        <td data-export="<?= e(fundName($ppa['fund']) . ' — ' . number_format($ppa['cost'], 2, '.', '')) ?>"><strong class="fund-link">▥ <?= e(fundName($ppa['fund'])) ?></strong><strong class="table-cost"><?= peso($ppa['cost']) ?></strong></td>
+                        <td data-export="<?= e(ppaFundLabel($ppa) . ' — ' . number_format($ppa['cost'], 2, '.', '')) ?>"><strong class="fund-link">▥ <?= e(ppaFundLabel($ppa)) ?></strong><strong class="table-cost"><?= peso($ppa['cost']) ?></strong></td>
                         <td data-export="<?= e($ppa['record']) ?>">
                             <?php if ($ppa['link'] === 'linked'): ?>
                                 <strong class="record-link"><?= e($ppa['record']) ?></strong><small class="table-subtext">SB approved: <?= e(displayDate($ppa['recordDate'])) ?></small>
@@ -108,7 +108,7 @@ $tableId = 'linking-table';
             <div class="trace-connector"></div>
             <div class="trace-node"><span>Implementing Office</span><strong><?= e(officeName($ppa['office'])) ?></strong></div>
             <div class="trace-connector"></div>
-            <div class="trace-node fund"><span>Funding Source</span><strong><?= e(fundName($ppa['fund'])) ?> · <?= e(pesoShort($ppa['cost'])) ?></strong></div>
+            <div class="trace-node fund"><span>Funding Source</span><strong><?= e(ppaFundLabel($ppa)) ?> · <?= e(pesoShort($ppa['cost'])) ?></strong></div>
             <div class="trace-connector"></div>
             <div class="trace-node <?= $ppa['link'] === 'linked' ? 'record' : 'missing' ?>"><span>Approval Record</span><strong><?= e($ppa['record'] !== '' ? $ppa['record'] : $linkLabels[$ppa['link']]) ?></strong></div>
         </div>

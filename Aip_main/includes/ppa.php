@@ -67,6 +67,10 @@ function ppaSeedRecords(): array
             'submitted_at'    => $ppa['updated'] . ' 08:00:00',
             'history'         => [['time' => $ppa['updated'] . ' 08:00:00', 'status' => $ppa['status'], 'action' => 'Sample record loaded', 'by' => 'System (sample data)', 'remarks' => '']],
         ];
+        if ($ppa['ref'] === 'PPA-' . AIP_FISCAL_YEAR . '-013') {
+            // MOCK: a split allocation that does not add up, to demonstrate the funding checks.
+            $record['allocations'] = ['GF' => 2000000, 'TF' => 400000];
+        }
         if ($ppa['status'] === 'returned') {
             $record['remarks'] = 'Please indicate the exact site and number of barangays served, and break down the cost into MOOE and Capital Outlay.';
             $record['history'][] = ['time' => $ppa['updated'] . ' 15:30:00', 'status' => 'returned', 'action' => 'Returned for revision', 'by' => 'Jose Bautista (jbautista)', 'remarks' => $record['remarks']];
@@ -135,6 +139,11 @@ function storeSavePpa(array $data, string $historyAction, string $remarks = ''):
     $existing = $_SESSION['mock_store']['ppas'][$data['ref']] ?? [];
     $record = array_merge($existing, $data);
     $record['cost'] = ppaTotal($record);
+    // A PPA that is not split across funds is charged entirely to its primary fund,
+    // so its allocation follows the primary fund and cost automatically.
+    if (count($record['allocations'] ?? []) <= 1) {
+        $record['allocations'] = [];
+    }
     $record['updated_by'] = $actorName;
     $record['updated_at'] = $now;
     $record['updated'] = date('Y-m-d');
@@ -228,7 +237,7 @@ function validatePpa(array $input, bool $isDraft, array $offices, ?string $curre
         'type'   => mockPpaTypes(),
         'sector' => array_keys(ppaSectors()),
         'office' => array_keys($offices),
-        'fund'   => array_keys(mockFundSources()),
+        'fund'   => array_keys(activeFundSources()),
     ];
     foreach ($choices as $field => $allowed) {
         $clean[$field] = $input[$field] ?? '';

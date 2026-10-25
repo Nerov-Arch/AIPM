@@ -180,6 +180,12 @@ function auditActionLabel(string $action): string
         'ppa.submit'          => 'Submitted PPA',
         'ppa.resubmit'        => 'Resubmitted PPA',
         'ppa.delete'          => 'Deleted PPA draft',
+        'ppa.funding'         => 'Changed PPA fund allocation',
+        'fund.create'         => 'Added fund source',
+        'fund.update'         => 'Edited fund source',
+        'fund.activate'       => 'Activated fund source',
+        'fund.deactivate'     => 'Deactivated fund source',
+        'fund.delete'         => 'Deleted fund source',
     ][$action] ?? $action;
 }
 

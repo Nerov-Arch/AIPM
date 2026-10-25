@@ -528,10 +528,23 @@
     $$('form[data-validate]').forEach(function (form) {
         var fields = $$('input[name], select[name], textarea[name]', form).filter(function (f) { return f.type !== 'hidden'; });
         fields.forEach(function (field) {
-            field.addEventListener('blur', function () { validateField(field, form); });
+            field.addEventListener('blur', function () {
+                // Skip while a submit button is being pressed: showing or clearing a message
+                // here would move the button under the pointer and swallow the click.
+                // The submit handler validates every field anyway.
+                if (form.__pressingSubmit) return;
+                validateField(field, form);
+            });
             field.addEventListener('change', function () { if (field.classList.contains('invalid')) validateField(field, form); });
         });
+        $$('button[type=submit], input[type=submit]', form).forEach(function (button) {
+            button.addEventListener('pointerdown', function () {
+                form.__pressingSubmit = true;
+                window.setTimeout(function () { form.__pressingSubmit = false; }, 1000);
+            });
+        });
         form.addEventListener('submit', function (event) {
+            form.__pressingSubmit = false;
             var ok = true;
             var firstBad = null;
             var isDraft = !!(event.submitter && event.submitter.hasAttribute('data-draft'));
@@ -579,6 +592,27 @@
                 return sum + (isNaN(n) ? 0 : n);
             }, 0);
             display.textContent = peso(total);
+        }
+        parts.forEach(function (input) { input.addEventListener('input', update); input.addEventListener('blur', update); });
+        update();
+    });
+
+    // Fund allocation editor: live total and difference from the PPA cost
+    $$('form[data-allocation-form]').forEach(function (form) {
+        var cost = parseFloat(form.getAttribute('data-cost') || '0');
+        var parts = $$('[data-alloc-part]', form);
+        var totalEl = $('[data-alloc-total]', form);
+        var diffEl = $('[data-alloc-diff]', form);
+        function update() {
+            var total = parts.reduce(function (sum, input) {
+                var n = parseFloat((input.value || '').replace(/,/g, ''));
+                return sum + (isNaN(n) ? 0 : n);
+            }, 0);
+            var diff = Math.round((cost - total) * 100) / 100;
+            totalEl.textContent = peso(total);
+            diffEl.textContent = diff === 0 ? 'Balanced' : (diff > 0 ? peso(diff) + ' unallocated' : peso(-diff) + ' over');
+            diffEl.parentNode.classList.toggle('balanced', diff === 0);
+            diffEl.parentNode.classList.toggle('unbalanced', diff !== 0);
         }
         parts.forEach(function (input) { input.addEventListener('input', update); input.addEventListener('blur', update); });
         update();

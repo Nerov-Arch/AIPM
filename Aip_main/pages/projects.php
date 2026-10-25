@@ -14,7 +14,7 @@ requirePermission($requiredPermission, $assetPrefix);
 
 // Encoders may only encode PPAs for their own office.
 $offices = array_filter(mockOffices(), fn ($name, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
-$fundSources = mockFundSources();
+$fundSources = activeFundSources();
 $sectors = ppaSectors();
 $fyStart = AIP_FISCAL_YEAR . '-01-01';
 $fyEnd = AIP_FISCAL_YEAR . '-12-31';

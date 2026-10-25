@@ -16,7 +16,7 @@ $statusGroups = [
 $rows = array_values(array_filter(visiblePpas(), fn ($p) => isset($statusGroups[$p['status']])));
 $offices = array_unique(array_column($rows, 'office'));
 sort($offices);
-$ceilings = array_map(fn ($f) => $f['ceiling'], mockFundSources());
+$ceilings = array_map(fn ($f) => (float) $f['ceiling'], activeFundSources());
 $tableId = 'consolidation-table';
 ?>
 <div class="page-heading report-heading">
@@ -40,7 +40,7 @@ $tableId = 'consolidation-table';
             <div class="panel-heading"><h2>☷ Report Parameters</h2></div>
             <label>Fiscal Year <em>*</em><select disabled><option>FY <?= AIP_FISCAL_YEAR ?></option></select></label>
             <label>Implementing Office<select data-filter="office" data-for="<?= $tableId ?>"><option value="">All offices (consolidated)</option><?php foreach ($offices as $code): ?><option value="<?= e($code) ?>"><?= e(officeName($code)) ?></option><?php endforeach; ?></select></label>
-            <label>Funding Source<select data-filter="fund" data-for="<?= $tableId ?>"><option value="">All sources</option><?php foreach (mockFundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
+            <label>Funding Source<select data-filter="fund" data-for="<?= $tableId ?>"><option value="">All sources</option><?php foreach (fundSources() as $code => $fund): ?><option value="<?= e($code) ?>"><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
             <fieldset>
                 <legend>Project Status Inclusion</legend>
                 <label class="check-option"><input type="checkbox" value="approved" data-filter-multi="group" data-for="<?= $tableId ?>" checked> <i class="green-dot"></i>Approved (finalized)</label>
@@ -76,7 +76,7 @@ $tableId = 'consolidation-table';
                         <td><?= e($ppa['ref']) ?></td>
                         <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><strong><?= e($ppa['title']) ?></strong><small><?= e($ppa['type']) ?> · <?= e($ppa['program']) ?></small></td>
                         <td data-export="<?= e(officeName($ppa['office'])) ?>"><?= e($ppa['office']) ?></td>
-                        <td><?= e(fundName($ppa['fund'])) ?></td>
+                        <td><?= e(ppaFundLabel($ppa)) ?></td>
                         <td data-export="<?= e($ppa['start'] . ' to ' . $ppa['end']) ?>"><?= e(date('M Y', strtotime($ppa['start']))) ?> – <?= e(date('M Y', strtotime($ppa['end']))) ?></td>
                         <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
                         <td><?= statusPill($ppa['status']) ?></td>
