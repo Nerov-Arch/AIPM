@@ -60,6 +60,7 @@ function initials(string $name): string
 function statusLabel(string $status): string
 {
     return [
+        'draft'       => 'Draft',
         'for_review'  => 'Pending Review',
         'returned'    => 'Returned for Revision',
         'recommended' => 'Pending Authorization',
@@ -74,6 +75,7 @@ function statusLabel(string $status): string
 function statusClass(string $status): string
 {
     return [
+        'draft'       => 'inactive',
         'for_review'  => 'for-review',
         'returned'    => 'rejected',
         'recommended' => 'pending',

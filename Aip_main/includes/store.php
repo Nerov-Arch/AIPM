@@ -175,8 +175,11 @@ function auditActionLabel(string $action): string
         'user.activate'       => 'Activated user',
         'user.deactivate'     => 'Deactivated user',
         'user.password_reset' => 'Reset password',
-        'ppa.draft_checked'   => 'Checked PPA draft',
-        'ppa.submit_checked'  => 'Checked PPA submission',
+        'ppa.create'          => 'Created PPA draft',
+        'ppa.update'          => 'Edited PPA',
+        'ppa.submit'          => 'Submitted PPA',
+        'ppa.resubmit'        => 'Resubmitted PPA',
+        'ppa.delete'          => 'Deleted PPA draft',
     ][$action] ?? $action;
 }
 

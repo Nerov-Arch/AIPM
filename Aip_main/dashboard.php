@@ -92,7 +92,7 @@ $recent = array_slice($recent, 0, 5);
                 ]];
             ?>
                 <tr data-row>
-                    <td class="title-cell"><strong><?= e($ppa['title']) ?></strong></td>
+                    <td class="title-cell"><a class="title-link" href="pages/ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a></td>
                     <td data-export="<?= e(officeName($ppa['office'])) ?>"><?= e($ppa['office']) ?></td>
                     <td><?= statusPill($ppa['status']) ?></td>
                     <td><?= e(displayDate($ppa['updated'])) ?></td>

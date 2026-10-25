@@ -258,3 +258,46 @@ a.user-menu:hover { background:#f3f6f9; }
 .primary-nav { align-content:start; }
 .form-panel form > label { display:block; margin:0 0 15px; color:#536b84; font-size:10px; font-weight:700; }
 .form-panel form > label em { color:#db6a51; font-style:normal; }
+
+/* ============================================================
+ * Project Encoding module
+ * ============================================================ */
+.title-link, .ref-link { color:inherit; }
+.title-link:hover strong, .ref-link:hover { color:var(--blue) !important; text-decoration:underline; }
+.ref-link { color:var(--blue); font-weight:700; }
+.ppa-table td { white-space:nowrap; }
+.ppa-table td.title-cell { white-space:normal; min-width:240px; }
+.flush-panel > .panel-heading .segmented-control { flex-wrap:wrap; }
+.remarks-alert strong { display:block; margin-bottom:3px; }
+.readonly-input { color:#5c7088 !important; background:#eef2f6 !important; font-weight:700; }
+.optional-label { color:#93a1b0; font-weight:400; }
+.ref-note { margin:0 0 15px; }
+.total-cost { display:flex; justify-content:space-between; align-items:baseline; margin:4px 0 16px; padding:12px 14px; border-radius:7px; background:var(--blue-soft); }
+.total-cost span { color:#4a6582; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+.total-cost strong { color:var(--ink); font-family:'Manrope',sans-serif; font-size:17px; }
+.form-panel label > small:not(.field-error) + small.field-error { margin-top:3px; }
+
+/* PPA record page */
+.ppa-view-layout { display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(300px, 1fr); gap:18px; align-items:start; }
+.ppa-view-main, .ppa-view-side { display:grid; gap:18px; }
+.detail-list.wide-terms { grid-template-columns:170px 1fr; }
+.prewrap { white-space:pre-wrap; }
+.cost-table { width:100%; border-collapse:collapse; font-size:11px; }
+.cost-table th { padding:6px 0; color:#7a8b9e; font-weight:600; text-align:left; }
+.cost-table td { padding:6px 0; color:var(--ink); font-weight:700; text-align:right; white-space:nowrap; }
+.cost-table .cost-total th, .cost-table .cost-total td { padding-top:10px; border-top:1px solid var(--line); color:var(--ink); font-size:13px; }
+.history-list { display:grid; gap:0; margin:0; padding:0; list-style:none; }
+.history-list li { position:relative; padding:0 0 16px 18px; border-left:2px solid #e4eaf0; margin-left:5px; }
+.history-list li:last-child { padding-bottom:0; border-left-color:transparent; }
+.history-list li::before { content:''; position:absolute; left:-6px; top:2px; width:10px; height:10px; border-radius:50%; background:#fff; border:2px solid var(--blue); }
+.history-head { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.history-head strong { color:var(--ink); font-size:11px; }
+.history-list small { display:block; margin-top:3px; color:#93a1b0; font-size:9px; }
+.history-list p { margin:6px 0 0; padding:8px 10px; border-radius:6px; color:#6a4a10; background:#fff6e5; font-size:10px; }
+@media (max-width:1000px) { .ppa-view-layout { grid-template-columns:1fr; } }
+@media print { .ppa-view-layout { display:block; } .ppa-view-layout .panel { margin-bottom:10px; } }
+.ppa-table td { white-space:normal; }
+.ppa-table td:first-child, .ppa-table td.amount, .ppa-table td:last-child { white-space:nowrap; }
+.ppa-table td:last-child { width:1%; }
+.encoding-form > .form-note { grid-column:1 / -1; margin-top:0; text-align:right; }
+.status-pill { white-space:nowrap; }

@@ -71,7 +71,7 @@ $tableId = 'linking-table';
                     ];
                 ?>
                     <tr data-row data-link="<?= $ppa['link'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
-                        <td class="title-cell" data-export="<?= e($ppa['ref'] . ' — ' . $ppa['title']) ?>"><span class="ref-pill"><?= e($ppa['ref']) ?></span><strong><?= e($ppa['title']) ?></strong><small class="table-subtext">▧ <?= e($ppa['program']) ?></small></td>
+                        <td class="title-cell" data-export="<?= e($ppa['ref'] . ' — ' . $ppa['title']) ?>"><span class="ref-pill"><?= e($ppa['ref']) ?></span><a class="title-link" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext">▧ <?= e($ppa['program']) ?></small></td>
                         <td data-export="<?= e(officeName($ppa['office'])) ?>"><strong><?= e($ppa['office']) ?></strong><small class="table-subtext"><?= e($ppa['officer']) ?></small></td>
                         <td data-export="<?= e(fundName($ppa['fund']) . ' — ' . number_format($ppa['cost'], 2, '.', '')) ?>"><strong class="fund-link">▥ <?= e(fundName($ppa['fund'])) ?></strong><strong class="table-cost"><?= peso($ppa['cost']) ?></strong></td>
                         <td data-export="<?= e($ppa['record']) ?>">

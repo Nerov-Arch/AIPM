@@ -1,5 +1,8 @@
 <?php
-$pageTitle = 'Project Encoding';
+/**
+ * PPA encoding form: create a new PPA, or edit a draft / returned PPA.
+ * Uses the standardized AIP fields defined in includes/ppa.php.
+ */
 $pageSection = 'Planning';
 $activePage = 'projects';
 $requiredPermission = 'ppa.encode';
@@ -12,181 +15,166 @@ requirePermission($requiredPermission, $assetPrefix);
 // Encoders may only encode PPAs for their own office.
 $offices = array_filter(mockOffices(), fn ($name, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
 $fundSources = mockFundSources();
-$ppaTypes = mockPpaTypes();
+$sectors = ppaSectors();
 $fyStart = AIP_FISCAL_YEAR . '-01-01';
 $fyEnd = AIP_FISCAL_YEAR . '-12-31';
+$moneyFields = ['ps', 'mooe', 'co', 'cc_adaptation', 'cc_mitigation'];
 
-$errors = [];
-$result = null;   // 'draft' or 'submitted' after a valid POST
-$summary = [];
-$old = [];
-
-/**
- * Validate the PPA form. Drafts only need a title; every value that is
- * provided must still be valid. Submissions need every required field.
- */
-function validatePpa(array $input, bool $isDraft, array $offices, array $fundSources, array $ppaTypes, string $fyStart, string $fyEnd): array
-{
-    $errors = [];
-    $required = $isDraft
-        ? ['project_title']
-        : ['project_title', 'ppa_type', 'implementing_office', 'description', 'estimated_cost', 'fund_source', 'start_date', 'completion_date'];
-    $labels = [
-        'project_title' => 'Project title', 'ppa_type' => 'PPA type', 'implementing_office' => 'Implementing office',
-        'description' => 'Description', 'estimated_cost' => 'Total estimated cost', 'fund_source' => 'Fund source',
-        'start_date' => 'Target start date', 'completion_date' => 'Target completion date',
-    ];
-    foreach ($required as $field) {
-        if ($input[$field] === '') {
-            $errors[$field] = $labels[$field] . ' is required.';
-        }
+$editing = null;
+if (isset($_GET['ref'])) {
+    $editing = storeFindPpa((string) $_GET['ref']);
+    if (!$editing || !canSeeOffice($editing['office'])) {
+        flash('error', 'That PPA was not found.');
+        header('Location: ppas.php');
+        exit;
     }
-
-    if (!isset($errors['project_title']) && mb_strlen($input['project_title']) > 200) {
-        $errors['project_title'] = 'Use 200 characters or fewer.';
+    if (!ppaIsEditable($editing)) {
+        flash('error', e($editing['ref']) . ' is ' . e(strtolower(statusLabel($editing['status']))) . ' and can no longer be edited.');
+        header('Location: ppa-view.php?ref=' . urlencode($editing['ref']));
+        exit;
     }
-    if ($input['ppa_type'] !== '' && !in_array($input['ppa_type'], $ppaTypes, true)) {
-        $errors['ppa_type'] = 'Choose a PPA type from the list.';
-    }
-    if ($input['implementing_office'] !== '' && !isset($offices[$input['implementing_office']])) {
-        $errors['implementing_office'] = 'Choose an implementing office from the list.';
-    }
-    if ($input['fund_source'] !== '' && !isset($fundSources[$input['fund_source']])) {
-        $errors['fund_source'] = 'Choose a fund source from the list.';
-    }
-    if (mb_strlen($input['program']) > 150) {
-        $errors['program'] = 'Use 150 characters or fewer.';
-    }
-    if (mb_strlen($input['description']) > 500) {
-        $errors['description'] = 'Use 500 characters or fewer.';
-    }
-    if (mb_strlen($input['expected_output']) > 300) {
-        $errors['expected_output'] = 'Use 300 characters or fewer.';
-    }
-
-    if ($input['estimated_cost'] !== '') {
-        $cost = str_replace(',', '', $input['estimated_cost']);
-        if (!preg_match('/^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/', $input['estimated_cost'])) {
-            $errors['estimated_cost'] = 'Enter a valid amount, e.g. 1,250,000.00';
-        } elseif ((float) $cost <= 0) {
-            $errors['estimated_cost'] = 'Amount must be greater than zero.';
-        } elseif ((float) $cost > 999999999999.99) {
-            $errors['estimated_cost'] = 'Amount is too large.';
-        }
-    }
-
-    foreach (['start_date', 'completion_date'] as $field) {
-        if ($input[$field] === '' || isset($errors[$field])) {
-            continue;
-        }
-        $date = DateTime::createFromFormat('Y-m-d', $input[$field]);
-        if (!$date || $date->format('Y-m-d') !== $input[$field]) {
-            $errors[$field] = 'Enter a valid date.';
-        } elseif ($input[$field] < $fyStart || $input[$field] > $fyEnd) {
-            $errors[$field] = 'Date must fall within FY ' . AIP_FISCAL_YEAR . '.';
-        }
-    }
-    if (!isset($errors['start_date']) && !isset($errors['completion_date'])
-        && $input['start_date'] !== '' && $input['completion_date'] !== ''
-        && $input['completion_date'] < $input['start_date']) {
-        $errors['completion_date'] = 'Target completion date cannot be earlier than the start date.';
-    }
-
-    return $errors;
 }
+$isReturned = $editing && $editing['status'] === 'returned';
+$pageTitle = $editing ? 'Edit ' . $editing['ref'] : 'New PPA';
+
+// Values shown in the form.
+$old = [];
+foreach (array_keys(PPA_FIELDS) as $field) {
+    $value = $editing[$field] ?? '';
+    if (in_array($field, $moneyFields, true)) {
+        $value = ($editing && (float) $value > 0) ? number_format((float) $value, 2) : '';
+    }
+    $old[$field] = (string) $value;
+}
+if (!$editing && count($offices) === 1) {
+    $old['office'] = array_key_first($offices);
+}
+$errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
-    $fields = ['project_title', 'ppa_type', 'implementing_office', 'program', 'description', 'expected_output', 'estimated_cost', 'fund_source', 'start_date', 'completion_date'];
-    foreach ($fields as $field) {
+    foreach (array_keys(PPA_FIELDS) as $field) {
         $old[$field] = trim((string) ($_POST[$field] ?? ''));
     }
     $isDraft = isset($_POST['save_draft']);
-    $errors = validatePpa($old, $isDraft, $offices, $fundSources, $ppaTypes, $fyStart, $fyEnd);
+    [$errors, $clean] = validatePpa($old, $isDraft, $offices, $editing['ref'] ?? null);
 
     if (!$errors) {
-        $result = $isDraft ? 'draft' : 'submitted';
-        $summary = [
-            'Title'               => $old['project_title'],
-            'Type'                => $old['ppa_type'] ?: '—',
-            'Implementing office' => $old['implementing_office'] ? $offices[$old['implementing_office']] : '—',
-            'Estimated cost'      => $old['estimated_cost'] !== '' ? peso((float) str_replace(',', '', $old['estimated_cost'])) : '—',
-            'Fund source'         => $old['fund_source'] ? $fundSources[$old['fund_source']]['name'] : '—',
-            'Schedule'            => ($old['start_date'] === '' && $old['completion_date'] === '') ? '—' : displayDate($old['start_date']) . ' – ' . displayDate($old['completion_date']),
-        ];
-        auditLog($isDraft ? 'ppa.draft_checked' : 'ppa.submit_checked', $old['project_title'], 'Validated only; not stored (no database yet)');
-        // MOCK: nothing is stored. In the database phase this is where the PPA is saved
-        // and, for submissions, its status is set to "Pending Review".
-        if ($result === 'submitted') {
-            $old = [];
+        if ($editing) {
+            $changes = ppaChanges($editing, $clean);
+            if ($isDraft) {
+                $saved = storeSavePpa(['ref' => $editing['ref']] + $clean, $changes ? 'Edited' : 'Saved without changes');
+                if ($changes) {
+                    auditLog('ppa.update', $saved['ref'], implode('; ', $changes));
+                }
+                flash('success', 'Saved ' . e($saved['ref']) . ($saved['status'] === 'returned' ? '. It is still returned for revision; resubmit it when ready.' : ' as a draft.'));
+            } else {
+                $saved = storeSavePpa(['ref' => $editing['ref'], 'status' => 'for_review', 'submitted_at' => date('Y-m-d H:i:s')] + $clean,
+                    $isReturned ? 'Resubmitted after revision' : 'Submitted for review');
+                if ($changes) {
+                    auditLog('ppa.update', $saved['ref'], implode('; ', $changes));
+                }
+                auditLog($isReturned ? 'ppa.resubmit' : 'ppa.submit', $saved['ref'], $saved['title'] . ' · ' . peso($saved['cost']));
+                flash('success', e($saved['ref']) . ' was ' . ($isReturned ? 'resubmitted' : 'submitted') . ' to the MPDO for review. It can no longer be edited unless it is returned.');
+            }
+        } else {
+            $status = $isDraft ? 'draft' : 'for_review';
+            $saved = storeSavePpa(['status' => $status, 'submitted_at' => $isDraft ? '' : date('Y-m-d H:i:s')] + $clean,
+                $isDraft ? 'Draft created' : 'Encoded and submitted for review');
+            auditLog('ppa.create', $saved['ref'], $saved['title'] . ' · ' . officeName($saved['office']));
+            if (!$isDraft) {
+                auditLog('ppa.submit', $saved['ref'], $saved['title'] . ' · ' . peso($saved['cost']));
+            }
+            flash('success', $isDraft
+                ? 'Draft ' . e($saved['ref']) . ' saved. You can finish and submit it later from Project Encoding.'
+                : e($saved['ref']) . ' was submitted to the MPDO for review.');
         }
+        header('Location: ppa-view.php?ref=' . urlencode($saved['ref']));
+        exit;
     }
 }
 
-/** Old input value for redisplaying the form. */
-function old(array $old, string $field): string
+function fieldError(array $errors, string $field): string
 {
-    return e($old[$field] ?? '');
+    return '<small class="field-error" data-error-for="' . $field . '">' . e($errors[$field] ?? '') . '</small>';
 }
 
 include '../includes/header.php';
 ?>
-<div class="page-heading"><div><p class="eyebrow">Preparation</p><h1>Project Encoding</h1><p class="muted">Enter the details of the proposed Program, Project, or Activity (PPA) for the FY <?= AIP_FISCAL_YEAR ?> AIP to start the review workflow.</p></div></div>
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><a href="ppas.php">Project Encoding</a> / <?= $editing ? e($editing['ref']) : 'New PPA' ?></p>
+        <h1><?= $editing ? 'Edit ' . e($editing['ref']) : 'Encode a New PPA' ?></h1>
+        <p class="muted">Use the standard AIP fields for every Program, Project or Activity so the MPDO can review and consolidate submissions consistently.</p>
+    </div>
+    <?php if ($editing): ?><div class="heading-actions"><?= statusPill($editing['status']) ?></div><?php endif; ?>
+</div>
 
 <section class="workflow-stepper" aria-label="Workflow stage"><div class="step active"><span>1</span><b>PREPARATION</b></div><div class="step"><span>2</span><b>REVIEW</b></div><div class="step"><span>3</span><b>AUTHORIZATION</b></div><div class="step"><span>4</span><b>IMPLEMENTATION</b></div></section>
 
-<?php if ($result): ?>
-    <div class="alert success" role="status">
-        <strong><?= $result === 'draft' ? 'Draft checked: no errors found.' : 'Proposal checked: ready for MPDO review.' ?></strong>
-        Development version: the proposal was <strong>not stored</strong> because the database is not connected yet.
-        <ul><?php foreach ($summary as $label => $value): ?><li><?= e($label) ?>: <?= e($value) ?></li><?php endforeach; ?></ul>
-    </div>
-<?php elseif ($errors): ?>
+<?php if ($isReturned && $editing['remarks'] !== ''): ?>
+    <div class="alert error remarks-alert" role="status"><strong>Returned by the MPDO for revision.</strong> <?= e($editing['remarks']) ?></div>
+<?php endif; ?>
+<?php if ($errors): ?>
     <div class="alert error" role="alert">
         <strong>Please correct <?= count($errors) === 1 ? 'the field' : 'the ' . count($errors) . ' fields' ?> below.</strong>
         <ul><?php foreach ($errors as $message): ?><li><?= e($message) ?></li><?php endforeach; ?></ul>
     </div>
 <?php endif; ?>
 
-<form method="post" class="encoding-form" data-encoding-form data-validate data-draft-required="project_title" novalidate>
+<form method="post" class="encoding-form" data-validate data-draft-required="title office" novalidate>
     <?= csrfField() ?>
     <div class="encoding-main">
         <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon blue-bg">ⓘ</span><div><h2>General Identification</h2><p>Provide the basic details of the proposed investment.</p></div></div>
+            <div class="form-section-heading"><span class="section-icon blue-bg">ⓘ</span><div><h2>1. General Identification</h2><p>What the PPA is and what it will deliver.</p></div></div>
             <div class="form-divider"></div>
-            <label>Project Title <em>*</em><input name="project_title" type="text" maxlength="200" placeholder="Enter formal title of the PPA" value="<?= old($old, 'project_title') ?>" required><small class="field-error" data-error-for="project_title"><?= e($errors['project_title'] ?? '') ?></small></label>
+            <?php if ($editing): ?><label>AIP Reference Code<input type="text" value="<?= e($editing['ref']) ?>" readonly class="readonly-input"></label><?php else: ?><p class="form-note ref-note">The AIP reference code (e.g. <?= e(nextPpaRef()) ?>) is assigned automatically when you save.</p><?php endif; ?>
+            <label>PPA Title / Description <em>*</em><input name="title" type="text" maxlength="200" placeholder="e.g. Concreting of Barangay Farm-to-Market Road (1.2 km)" value="<?= e($old['title']) ?>" required><?= fieldError($errors, 'title') ?></label>
             <div class="form-columns">
-                <label>PPA Type <em>*</em><select name="ppa_type" required><option value="">Select type</option><?php foreach ($ppaTypes as $type): ?><option value="<?= e($type) ?>" <?= ($old['ppa_type'] ?? '') === $type ? 'selected' : '' ?>><?= e($type) ?></option><?php endforeach; ?></select><small class="field-error" data-error-for="ppa_type"><?= e($errors['ppa_type'] ?? '') ?></small></label>
-                <label>Program Name<input name="program" type="text" maxlength="150" placeholder="e.g. Rural Infrastructure Program" value="<?= old($old, 'program') ?>"><small class="field-error" data-error-for="program"><?= e($errors['program'] ?? '') ?></small></label>
+                <label>PPA Type <em>*</em><select name="type" required><option value="">Select type</option><?php foreach (mockPpaTypes() as $type): ?><option value="<?= e($type) ?>" <?= $old['type'] === $type ? 'selected' : '' ?>><?= e($type) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'type') ?></label>
+                <label>Sector <em>*</em><select name="sector" required><option value="">Select sector</option><?php foreach ($sectors as $code => $name): ?><option value="<?= e($code) ?>" <?= $old['sector'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'sector') ?></label>
             </div>
-            <label>Description <em>*</em><textarea name="description" rows="5" maxlength="500" placeholder="Provide a detailed rationale and expected outcomes..." required><?= old($old, 'description') ?></textarea><small data-counter-for="description">0 / 500 characters</small><small class="field-error" data-error-for="description"><?= e($errors['description'] ?? '') ?></small></label>
-            <label>Expected Outputs<textarea name="expected_output" rows="3" maxlength="300" placeholder="e.g. 1.2 km concrete road completed"><?= old($old, 'expected_output') ?></textarea><small class="field-error" data-error-for="expected_output"><?= e($errors['expected_output'] ?? '') ?></small></label>
+            <label>Program <span class="optional-label">(required for projects and activities)</span><input name="program" type="text" maxlength="150" placeholder="e.g. Rural Infrastructure Program" value="<?= e($old['program']) ?>" list="program-list"><?= fieldError($errors, 'program') ?></label>
+            <datalist id="program-list"><?php foreach (array_unique(array_column(visiblePpas(true), 'program')) as $program): ?><option value="<?= e($program) ?>"><?php endforeach; ?></datalist>
+            <label>Rationale / Description <em>*</em><textarea name="description" rows="4" maxlength="1000" placeholder="Why the PPA is needed and who will benefit" required><?= e($old['description']) ?></textarea><small data-counter-for="description">0 / 1000 characters</small><?= fieldError($errors, 'description') ?></label>
+            <label>Expected Outputs <em>*</em><textarea name="expected_output" rows="3" maxlength="500" placeholder="e.g. 1.2 km concrete road completed; 3 barangays connected" required><?= e($old['expected_output']) ?></textarea><small data-counter-for="expected_output">0 / 500 characters</small><?= fieldError($errors, 'expected_output') ?></label>
         </section>
+
         <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon blue-bg">▦</span><div><h2>Implementation &amp; Logistics</h2><p>Identify the responsible office.</p></div></div>
+            <div class="form-section-heading"><span class="section-icon blue-bg">▦</span><div><h2>2. Implementation</h2><p>Responsible office and schedule within FY <?= AIP_FISCAL_YEAR ?>.</p></div></div>
             <div class="form-divider"></div>
-            <label>Implementing Office <em>*</em><select name="implementing_office" required><option value="">Select department/office</option><?php foreach ($offices as $code => $name): ?><option value="<?= e($code) ?>" <?= ($old['implementing_office'] ?? (count($offices) === 1 ? $code : '')) === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><?php if (count($offices) === 1): ?><small>PPAs are encoded under your assigned office.</small><?php endif; ?><small class="field-error" data-error-for="implementing_office"><?= e($errors['implementing_office'] ?? '') ?></small></label>
+            <label>Implementing Office <em>*</em><select name="office" required <?= count($offices) === 1 ? 'data-locked' : '' ?>><?php if (count($offices) > 1): ?><option value="">Select office</option><?php endif; ?><?php foreach ($offices as $code => $name): ?><option value="<?= e($code) ?>" <?= $old['office'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><?php if (count($offices) === 1): ?><small>PPAs are encoded under your assigned office.</small><?php endif; ?><?= fieldError($errors, 'office') ?></label>
+            <div class="form-columns">
+                <label>Start Date <em>*</em><input name="start" type="date" min="<?= $fyStart ?>" max="<?= $fyEnd ?>" value="<?= e($old['start']) ?>" required><?= fieldError($errors, 'start') ?></label>
+                <label>Completion Date <em>*</em><input name="end" type="date" min="<?= $fyStart ?>" max="<?= $fyEnd ?>" data-after="start" value="<?= e($old['end']) ?>" required><?= fieldError($errors, 'end') ?></label>
+            </div>
         </section>
     </div>
+
     <div class="encoding-side">
         <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon amber-bg">▣</span><div><h2>Financial Estimates</h2><p>Set the expected cost and source.</p></div></div>
+            <div class="form-section-heading"><span class="section-icon amber-bg">₱</span><div><h2>3. Cost and Funding</h2><p>Amounts in pesos by expense class.</p></div></div>
             <div class="form-divider"></div>
-            <label>Total Estimated Cost <em>*</em><div class="currency-input"><span>₱</span><input name="estimated_cost" type="text" inputmode="decimal" placeholder="0.00" data-rule="money" value="<?= old($old, 'estimated_cost') ?>" required></div><small class="field-error" data-error-for="estimated_cost"><?= e($errors['estimated_cost'] ?? '') ?></small></label>
-            <label>Primary Fund Source <em>*</em><select name="fund_source" required><option value="">Select source</option><?php foreach ($fundSources as $code => $fund): ?><option value="<?= e($code) ?>" <?= ($old['fund_source'] ?? '') === $code ? 'selected' : '' ?>><?= e($fund['name']) ?></option><?php endforeach; ?></select><small class="field-error" data-error-for="fund_source"><?= e($errors['fund_source'] ?? '') ?></small></label>
+            <?php foreach (['ps' => 'Personal Services (PS)', 'mooe' => 'Maintenance and Other Operating Expenses (MOOE)', 'co' => 'Capital Outlay (CO)'] as $field => $label): ?>
+                <label><?= e($label) ?><div class="currency-input"><span>₱</span><input name="<?= $field ?>" type="text" inputmode="decimal" placeholder="0.00" data-rule="money-optional" data-total-part value="<?= e($old[$field]) ?>"></div><?= fieldError($errors, $field) ?></label>
+            <?php endforeach; ?>
+            <div class="total-cost"><span>Total Estimated Cost</span><strong data-total-display>₱0.00</strong></div>
+            <label>Fund Source <em>*</em><select name="fund" required><option value="">Select source</option><?php foreach ($fundSources as $code => $fund): ?><option value="<?= e($code) ?>" <?= $old['fund'] === $code ? 'selected' : '' ?>><?= e($fund['name']) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'fund') ?></label>
         </section>
         <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon blue-bg">▣</span><div><h2>Implementation Timeline</h2><p>Dates must fall within FY <?= AIP_FISCAL_YEAR ?>.</p></div></div>
+            <div class="form-section-heading"><span class="section-icon green-bg">♻</span><div><h2>4. Climate Change Expenditure</h2><p>Leave blank if not applicable.</p></div></div>
             <div class="form-divider"></div>
-            <label>Target Start Date <em>*</em><input name="start_date" type="date" min="<?= $fyStart ?>" max="<?= $fyEnd ?>" value="<?= old($old, 'start_date') ?>" required><small class="field-error" data-error-for="start_date"><?= e($errors['start_date'] ?? '') ?></small></label>
-            <label>Target Completion Date <em>*</em><input name="completion_date" type="date" min="<?= $fyStart ?>" max="<?= $fyEnd ?>" data-after="start_date" value="<?= old($old, 'completion_date') ?>" required><small class="field-error" data-error-for="completion_date"><?= e($errors['completion_date'] ?? '') ?></small></label>
+            <label>Adaptation<div class="currency-input"><span>₱</span><input name="cc_adaptation" type="text" inputmode="decimal" placeholder="0.00" data-rule="money-optional" value="<?= e($old['cc_adaptation']) ?>"></div><?= fieldError($errors, 'cc_adaptation') ?></label>
+            <label>Mitigation<div class="currency-input"><span>₱</span><input name="cc_mitigation" type="text" inputmode="decimal" placeholder="0.00" data-rule="money-optional" value="<?= e($old['cc_mitigation']) ?>"></div><?= fieldError($errors, 'cc_mitigation') ?></label>
+            <label>CC Typology Code<input name="cc_typology" type="text" maxlength="20" placeholder="e.g. A612-01" value="<?= e($old['cc_typology']) ?>"><small>Required when an adaptation or mitigation amount is entered.</small><?= fieldError($errors, 'cc_typology') ?></label>
         </section>
     </div>
+
     <div class="form-actions">
-        <button class="secondary-button" type="button" data-reset-form>Clear form</button>
-        <button class="secondary-button" type="submit" name="save_draft" value="1" data-draft>Save Draft</button>
-        <button class="primary-button" type="submit" name="submit_review" value="1">Submit for Review <span>→</span></button>
+        <a class="secondary-button" href="<?= $editing ? 'ppa-view.php?ref=' . urlencode($editing['ref']) : 'ppas.php' ?>">Cancel</a>
+        <button class="secondary-button" type="submit" name="save_draft" value="1" data-draft><?= $isReturned ? 'Save changes' : 'Save Draft' ?></button>
+        <button class="primary-button" type="submit" name="submit_review" value="1" data-confirm-submit="<?= $isReturned ? 'Resubmit this PPA to the MPDO? You will not be able to edit it unless it is returned again.' : 'Submit this PPA to the MPDO for review? You will not be able to edit it unless it is returned.' ?>"><?= $isReturned ? 'Resubmit for Review' : 'Submit for Review' ?> <span>→</span></button>
     </div>
-    <p class="form-note">Fields marked <em>*</em> are required to submit for review. A draft only needs a title.</p>
+    <p class="form-note">Fields marked <em>*</em> are required to submit. A draft needs only a title and office.</p>
 </form>
 <?php include '../includes/footer.php'; ?>

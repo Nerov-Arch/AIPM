@@ -29,7 +29,9 @@ The login page lists these accounts; click one to fill in the username.
 | Menu group | Page | File |
 |---|---|---|
 | — | Dashboard | `dashboard.php` |
-| Planning | Project Encoding | `pages/projects.php` |
+| Planning | Project Encoding (My PPAs) | `pages/ppas.php` |
+| Planning | Encode / edit a PPA | `pages/projects.php` |
+| Planning | PPA record and status history | `pages/ppa-view.php` |
 | Planning | Project Linking & Traceability | `pages/project-linking.php` |
 | Workflow | Review | `pages/review-workflow.php` |
 | Workflow | Authorization | `pages/authorization-workflow.php` |
@@ -59,6 +61,22 @@ log live in `includes/store.php`.
 > They survive signing out and switching test accounts in the same browser, but reset when the
 > browser session ends, and are not shared between browsers or computers.
 
+## Project Encoding module
+
+| Feature | Status |
+|---|---|
+| Standardized AIP fields: reference code, title, type, program, sector, description, expected outputs, office, schedule, PS/MOOE/CO (total computed), fund source, climate change adaptation/mitigation and typology code | Done |
+| Save draft (title and office only), edit, submit for review | Works (session store) |
+| Returned PPAs show reviewer remarks; encoder revises and resubmits | Works (session store) |
+| Delete drafts; submitted PPAs are locked from editing | Enforced |
+| Duplicate check: same title for the same office in the same AIP year is rejected | Enforced |
+| Encoders encode and see only their own office's PPAs; drafts are private to the office | Enforced |
+| Submitted PPAs appear in Review, Linking, Dashboard, Consolidation and Fund Monitoring | Works |
+| Status history on each PPA; create/edit/submit/resubmit/delete recorded in the activity log | Works (session store) |
+| Matching browser and server validation for every field | Done |
+
+PPA fields, rules and storage are in `includes/ppa.php`.
+
 ## What works now (no database needed)
 
 - Login, logout and protected pages (redirect to login from any folder).
@@ -76,13 +94,13 @@ log live in `includes/store.php`.
 |---|---|---|
 | Sample offices, fund sources, PPAs, starting users | `includes/mock-data.php` | Prepared-statement queries |
 | Session-backed user accounts and activity log | `includes/store.php` | `users` and `audit_logs` tables |
+| Session-backed PPA records and status history | `includes/ppa.php` | `ppas` and `ppa_history` tables |
 | Shared development password `Dev@2026` and test-account list on the login page | `includes/mock-data.php`, `login.php` | Removed |
 | Fiscal year (`AIP_FISCAL_YEAR = 2027`) | `includes/helpers.php` | AIP cycle settings |
-| PPA form "saves" (validated, not stored) | `pages/projects.php` | Inserts / updates |
 
 ## Not yet available
 
-- Saving PPAs, return-for-revision and approval actions (next modules).
+- MPDO review actions (return for revision, recommend) and approval actions (next modules).
 - Department, fund source and fiscal year management screens.
 - Approval-record attachments, progress updates.
 - Email delivery of temporary passwords (shown on screen to the administrator instead).

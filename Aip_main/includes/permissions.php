@@ -82,8 +82,12 @@ function canSeeOffice(string $officeCode): bool
     return (currentUser()['office'] ?? null) === $officeCode;
 }
 
-/** PPAs the current user is allowed to see. */
-function visiblePpas(): array
+/**
+ * PPAs the current user is allowed to see. Drafts are private to the
+ * encoding office and only included when asked for (My PPAs page).
+ */
+function visiblePpas(bool $includeDrafts = false): array
 {
-    return array_values(array_filter(mockPpas(), fn ($ppa) => canSeeOffice($ppa['office'])));
+    return array_values(array_filter(storePpas(), fn ($ppa) => canSeeOffice($ppa['office'])
+        && ($includeDrafts || $ppa['status'] !== 'draft')));
 }

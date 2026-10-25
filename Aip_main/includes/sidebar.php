@@ -7,7 +7,7 @@ $navGroups = [
         'dashboard' => ['href' => 'dashboard.php', 'icon' => '▦', 'label' => 'Dashboard', 'perm' => 'dashboard.view'],
     ],
     'Planning' => [
-        'projects' => ['href' => 'pages/projects.php',       'icon' => '▤', 'label' => 'Project Encoding', 'perm' => 'ppa.encode'],
+        'projects' => ['href' => 'pages/ppas.php',           'icon' => '▤', 'label' => 'Project Encoding', 'perm' => 'ppa.encode'],
         'linking'  => ['href' => 'pages/project-linking.php', 'icon' => '⛓', 'label' => 'Project Linking', 'perm' => 'linking.view'],
     ],
     'Workflow' => [

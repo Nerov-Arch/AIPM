@@ -8,7 +8,7 @@
  *   pendingHeading, processedHeading, actionLabel, note,
  *   showProgress (bool)
  *
- * MOCK: rows come from mockPpas(). Actions only open record details;
+ * Rows come from the PPA store (includes/ppa.php). Actions only open record details;
  * changing a PPA's status needs the workflow stage and the database.
  */
 $queueId = 'queue-table';
@@ -89,7 +89,7 @@ $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . o
             ?>
                 <tr data-row data-state="<?= $ppa['state'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
                     <td><?= e($ppa['ref']) ?></td>
-                    <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><strong><?= e($ppa['title']) ?></strong><small class="table-subtext"><?= e($ppa['type']) ?> · <?= e(fundName($ppa['fund'])) ?></small></td>
+                    <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><a class="title-link" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext"><?= e($ppa['type']) ?> · <?= e(fundName($ppa['fund'])) ?></small></td>
                     <td data-export="<?= e(officeName($ppa['office'])) ?>"><?= e($ppa['office']) ?></td>
                     <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
                     <?php if ($showProgress): ?><td data-export="<?= $ppa['progress'] ?>%"><div class="table-progress"><div class="progress-track"><span style="width:<?= (int) $ppa['progress'] ?>%"></span></div><b><?= (int) $ppa['progress'] ?>%</b></div></td><?php endif; ?>

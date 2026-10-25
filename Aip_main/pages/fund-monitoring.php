@@ -13,7 +13,7 @@ $funds = [];
 foreach (mockFundSources() as $code => $fund) {
     $funds[$code] = $fund + ['programmed' => 0, 'pending' => 0, 'utilized' => 0, 'count' => 0];
 }
-foreach (mockPpas() as $ppa) {
+foreach (visiblePpas() as $ppa) {
     if (!isset($funds[$ppa['fund']])) {
         continue;
     }

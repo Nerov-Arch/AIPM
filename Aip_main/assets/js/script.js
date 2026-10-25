@@ -483,6 +483,10 @@
 
         if (required && value === '') {
             message = fieldLabel(field) + ' is required.';
+        } else if (value !== '' && rule === 'money-optional') {
+            if (!/^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/.test(value)) {
+                message = 'Enter a valid amount, e.g. 1,250,000.00';
+            }
         } else if (value !== '' && rule === 'money') {
             var number = parseFloat(value.replace(/,/g, ''));
             if (!/^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/.test(value) || isNaN(number)) {
@@ -538,7 +542,10 @@
                 event.preventDefault();
                 firstBad.focus();
                 showToast('Please correct the highlighted fields.');
+                return;
             }
+            var confirmText = event.submitter && event.submitter.getAttribute('data-confirm-submit');
+            if (confirmText && !window.confirm(confirmText)) event.preventDefault();
         });
     });
 
@@ -552,13 +559,29 @@
     });
 
     // Money fields: format with thousands separators on blur
-    $$('input[data-rule="money"]').forEach(function (input) {
+    $$('input[data-rule="money"], input[data-rule="money-optional"]').forEach(function (input) {
         input.addEventListener('blur', function () {
             var raw = input.value.replace(/,/g, '').trim();
             if (/^\d+(\.\d{1,2})?$/.test(raw)) {
                 input.value = Number(raw).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         });
+    });
+
+    // Live total of PS + MOOE + CO on the encoding form
+    $$('form').forEach(function (form) {
+        var parts = $$('[data-total-part]', form);
+        var display = $('[data-total-display]', form);
+        if (!parts.length || !display) return;
+        function update() {
+            var total = parts.reduce(function (sum, input) {
+                var n = parseFloat((input.value || '').replace(/,/g, ''));
+                return sum + (isNaN(n) ? 0 : n);
+            }, 0);
+            display.textContent = peso(total);
+        }
+        parts.forEach(function (input) { input.addEventListener('input', update); input.addEventListener('blur', update); });
+        update();
     });
 
     // Reset button that also clears validation messages

@@ -13,7 +13,7 @@ $statusGroups = [
     'ongoing'     => 'approved',
     'completed'   => 'approved',
 ];
-$rows = array_values(array_filter(mockPpas(), fn ($p) => isset($statusGroups[$p['status']])));
+$rows = array_values(array_filter(visiblePpas(), fn ($p) => isset($statusGroups[$p['status']])));
 $offices = array_unique(array_column($rows, 'office'));
 sort($offices);
 $ceilings = array_map(fn ($f) => $f['ceiling'], mockFundSources());
