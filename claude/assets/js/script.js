@@ -507,6 +507,10 @@
             }
         } else if (value !== '' && rule === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
             message = 'Enter a valid email address.';
+        } else if (value !== '' && rule === 'gov-email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            message = 'Enter a valid email address.';
+        } else if (value !== '' && rule === 'gov-email' && value.toLowerCase().split('@')[1] !== (field.getAttribute('data-domain') || '').toLowerCase()) {
+            message = 'Use the person\'s @' + field.getAttribute('data-domain') + ' government email. Sign-in codes are sent there.';
         } else if (value !== '' && rule === 'username' && !/^[a-z0-9._-]{3,30}$/.test(value.toLowerCase())) {
             message = 'Use 3–30 lowercase letters, numbers, dots, dashes or underscores.';
         } else if (value !== '' && rule === 'password' && (value.length < 8 || !/[A-Za-z]/.test(value) || !/\d/.test(value))) {

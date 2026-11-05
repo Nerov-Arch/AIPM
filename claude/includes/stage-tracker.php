@@ -4,10 +4,10 @@
  * Expects $ppa.
  */
 $stage = ppaStage($ppa);
-$trackerSteps = ['Encoding', 'MPDO Review', 'Approval', 'Implementation'];
+$trackerSteps = ['Encoding', 'MPDO Review', 'Budget Review', 'Final Approval', 'Implementation'];
 $ended = $ppa['status'] === 'disapproved';
 $days = daysInStatus($ppa);
-$isWaiting = in_array($ppa['status'], ['returned', 'for_review', 'recommended'], true);
+$isWaiting = in_array($ppa['status'], WORKFLOW_PENDING_STATUSES, true);
 ?>
 <section class="panel stage-tracker <?= $ended ? 'ended' : '' ?>">
     <div class="stage-steps">

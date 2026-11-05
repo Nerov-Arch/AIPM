@@ -11,7 +11,7 @@
 /** PPA statuses included in the consolidated AIP. */
 const AIP_INCLUDED_STATUSES = ['approved', 'ongoing', 'completed'];
 /** Statuses that are still undecided (would be missing from the AIP). */
-const AIP_UNDECIDED_STATUSES = ['for_review', 'recommended', 'returned'];
+const AIP_UNDECIDED_STATUSES = ['for_review', 'for_budget', 'recommended', 'returned'];
 
 /** The fields copied into a consolidated AIP entry. */
 function aipEntryFromPpa(array $ppa): array

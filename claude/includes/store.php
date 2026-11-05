@@ -16,12 +16,19 @@
 
 const AUDIT_LOG_LIMIT = 500;
 
+/**
+ * Bumped whenever the shape of the sample data changes, so a browser that
+ * still holds an older session store starts again from the new sample data.
+ */
+const MOCK_STORE_VERSION = 2;
+
 /** Create the store from the mock data on first use. */
 function storeInit(): void
 {
-    if (isset($_SESSION['mock_store'])) {
+    if (isset($_SESSION['mock_store']) && ($_SESSION['mock_store']['version'] ?? 1) === MOCK_STORE_VERSION) {
         return;
     }
+    unset($_SESSION['user_id'], $_SESSION['otp_pending']);
     $now = date('Y-m-d H:i:s');
     $hash = password_hash(MOCK_DEV_PASSWORD, PASSWORD_DEFAULT);
     $users = [];
@@ -37,6 +44,7 @@ function storeInit(): void
         ];
     }
     $_SESSION['mock_store'] = [
+        'version' => MOCK_STORE_VERSION,
         'users'   => $users,
         'next_id' => max(array_keys($users)) + 1,
         'audit'   => [],
@@ -167,6 +175,8 @@ function auditActionLabel(string $action): string
         'auth.login_failed'   => 'Failed sign-in',
         'auth.login_locked'   => 'Sign-in locked',
         'auth.logout'         => 'Signed out',
+        'auth.otp_sent'       => 'Sign-in code sent',
+        'auth.otp_failed'     => 'Wrong sign-in code',
         'auth.password_change'=> 'Changed own password',
         'access.denied'       => 'Access denied',
         'user.create'         => 'Created user',
@@ -183,9 +193,17 @@ function auditActionLabel(string $action): string
         'ppa.funding'         => 'Changed PPA fund allocation',
         'ppa.return'          => 'Returned PPA for revision',
         'ppa.recommend'       => 'Recommended PPA',
+        'ppa.forward'         => 'Forwarded PPA to Finance',
+        'ppa.edit_in_review'  => 'Office edited PPA under review',
+        'ppa.budget_approve'  => 'Approved PPA budget',
+        'ppa.budget_return'   => 'Returned PPA to MPDO (budget)',
+        'expense.add'         => 'Recorded expense',
+        'expense.delete'      => 'Removed expense',
+        'expense.verify'      => 'Verified expense',
+        'expense.flag'        => 'Flagged expense',
         'ppa.approve'         => 'Approved PPA',
         'ppa.disapprove'      => 'Disapproved PPA',
-        'ppa.send_back'       => 'Sent PPA back to MPDO',
+        'ppa.send_back'       => 'Sent PPA back to Finance',
         'link.record_create'  => 'Registered approval record',
         'link.record_update'  => 'Edited approval record',
         'link.record_delete'  => 'Deleted approval record',

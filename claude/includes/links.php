@@ -148,7 +148,7 @@ function unlinkPpaFromRecord(string $ref, string $no, string $reason): bool
 
 /**
  * Link a PPA to a record by number, creating the record if it does not
- * exist yet (used when an approver enters a resolution while approving).
+ * exist yet (kept for registering records; the final decision no longer asks for a resolution).
  */
 function linkPpaByRecordNumber(string $ref, string $no, string $date, string $type = 'SB Resolution'): void
 {
@@ -234,8 +234,9 @@ function ppaTrace(array $ppa): array
         'versions'    => $versions,
         'people'      => array_filter([
             'Encoded by'     => ['label' => $ppa['created_by'] ?? '', 'user' => $findUser($ppa['created_by'] ?? null)],
-            'Recommended by' => ['label' => $ppa['recommended_by'] ?? '', 'user' => $findUser($ppa['recommended_by'] ?? null)],
-            'Decided by'     => ['label' => $ppa['decided_by'] ?? '', 'user' => $findUser($ppa['decided_by'] ?? null)],
+            'Evaluated by'   => ['label' => $ppa['recommended_by'] ?? '', 'user' => $findUser($ppa['recommended_by'] ?? null)],
+            'Budget by'      => ['label' => $ppa['budget']['by'] ?? '', 'user' => $findUser($ppa['budget']['by'] ?? null)],
+            'Approved by'    => ['label' => $ppa['decided_by'] ?? '', 'user' => $findUser($ppa['decided_by'] ?? null)],
         ], fn ($p) => $p['label'] !== ''),
     ];
 }

@@ -35,15 +35,16 @@ include '../includes/header.php';
     <div class="heading-actions no-print">
         <?= statusPill($ppa['status']) ?>
         <button class="secondary-button" type="button" data-print>▣ Print</button>
-        <?php if ($editable): ?><a class="primary-button" href="projects.php?ref=<?= urlencode($ppa['ref']) ?>"><?= $ppa['status'] === 'returned' ? 'Revise and resubmit' : 'Edit draft' ?></a><?php endif; ?>
-        <?php if (array_filter(workflowActionsFor($ppa), fn ($a) => $a['allowed'])): ?><a class="primary-button" href="ppa-review.php?ref=<?= urlencode($ppa['ref']) ?>"><?= $ppa['status'] === 'recommended' ? 'Decide' : 'Evaluate' ?></a><?php endif; ?>
+        <?php if ($editable): ?><a class="primary-button" href="projects.php?ref=<?= urlencode($ppa['ref']) ?>"><?= ['returned' => 'Revise and resubmit', 'for_review' => 'Edit (under review)'][$ppa['status']] ?? 'Edit draft' ?></a><?php endif; ?>
+        <?php if (array_filter(workflowActionsFor($ppa), fn ($a) => $a['allowed'])): ?><a class="primary-button" href="<?= decisionPageFor($ppa) ?>?ref=<?= urlencode($ppa['ref']) ?>"><?= ['recommended' => 'Final approval', 'for_budget' => 'Review budget'][$ppa['status']] ?? 'Evaluate' ?></a><?php endif; ?>
+        <?php if (in_array($ppa['status'], ['approved', 'ongoing', 'completed'], true) && can('expenses.view')): ?><a class="secondary-button" href="ppa-expenses.php?ref=<?= urlencode($ppa['ref']) ?>">Expenses &amp; receipts</a><?php endif; ?>
     </div>
 </div>
 
 <?php if ($ppa['status'] !== 'draft') { include '../includes/stage-tracker.php'; } ?>
 
 <?php if ($ppa['status'] === 'disapproved'): ?>
-    <div class="alert error remarks-alert" role="status"><strong>Disapproved by <?= e($ppa['decided_by'] ?? 'the approver') ?><?= !empty($ppa['decided_at']) ? ' on ' . e(date('M j, Y', strtotime($ppa['decided_at']))) : '' ?>.</strong> <?= e($ppa['decision_remarks'] ?? '') ?></div>
+    <div class="alert error remarks-alert" role="status"><strong>Disapproved by <?= e($ppa['decided_by'] ?? 'the MPDO') ?><?= !empty($ppa['decided_at']) ? ' on ' . e(date('M j, Y', strtotime($ppa['decided_at']))) : '' ?>.</strong> <?= e($ppa['decision_remarks'] ?? '') ?></div>
 <?php elseif ($ppa['status'] === 'returned' && $ppa['remarks'] !== ''): ?>
     <div class="alert error remarks-alert" role="status"><strong>Returned by the MPDO for revision.</strong> <?= e($ppa['remarks']) ?></div>
 <?php elseif ($ppa['status'] === 'draft'): ?>
@@ -72,7 +73,8 @@ include '../includes/header.php';
                 <dt>Implementing office</dt><dd><?= e(officeName($ppa['office'])) ?></dd>
                 <dt>Encoded by</dt><dd><?= e($ppa['created_by']) ?> on <?= e(date('M j, Y g:i A', strtotime($ppa['created_at']))) ?></dd>
                 <dt>Schedule</dt><dd><?= $ppa['start'] !== '' ? e(displayDate($ppa['start'])) . ' – ' . e(displayDate($ppa['end'])) : '—' ?></dd>
-                <?php if (in_array($ppa['status'], ['ongoing', 'completed'], true)): ?><dt>Physical progress</dt><dd><?= (int) $ppa['progress'] ?>% · <?= peso($ppa['utilized']) ?> utilized</dd><?php endif; ?>
+                <?php if (in_array($ppa['status'], ['ongoing', 'completed'], true)): ?><dt>Physical progress</dt><dd><?= (int) $ppa['progress'] ?>% · <?= peso($ppa['utilized']) ?> spent (<a href="ppa-expenses.php?ref=<?= urlencode($ppa['ref']) ?>">expenditure timeline</a>)</dd><?php endif; ?>
+                <?php if (in_array($ppa['status'], ['approved', 'ongoing', 'completed', 'disapproved'], true) && !empty($ppa['decided_by'])): ?><dt>Approval status</dt><dd><?= statusPill($ppa['status'] === 'disapproved' ? 'disapproved' : 'approved') ?> by <?= e($ppa['decided_by']) ?> on <?= e(date('M j, Y', strtotime($ppa['decided_at']))) ?></dd><?php endif; ?>
             </dl>
         </section>
         <?php if ($ppa['status'] !== 'draft'): $trace = ppaTrace($ppa); $linkState = ppaLinkStatus($ppa); ?>
@@ -105,12 +107,19 @@ include '../includes/header.php';
         <section class="panel form-panel">
             <div class="form-section-heading"><span class="section-icon amber-bg">₱</span><div><h2>Cost and Funding</h2><p>Primary fund: <?= e($ppa['fund'] !== '' ? fundName($ppa['fund']) : 'not set') ?></p></div></div>
             <div class="form-divider"></div>
-            <table class="cost-table">
-                <tr><th>Personal Services</th><td><?= peso((float) $ppa['ps']) ?></td></tr>
-                <tr><th>MOOE</th><td><?= peso((float) $ppa['mooe']) ?></td></tr>
-                <tr><th>Capital Outlay</th><td><?= peso((float) $ppa['co']) ?></td></tr>
-                <tr class="cost-total"><th>Total estimated cost</th><td><?= peso($ppa['cost']) ?></td></tr>
+            <?php $requested = ppaRequested($ppa); $approvedBudget = ppaApprovedBudget($ppa); ?>
+            <table class="cost-table budget-compare" data-budget-compare>
+                <thead><tr><th></th><th>Requested</th><th>Approved</th></tr></thead>
+                <tr><th>Personal Services</th><td><?= peso($requested['ps']) ?></td><td><?= $approvedBudget ? peso($approvedBudget['ps']) : '—' ?></td></tr>
+                <tr><th>MOOE</th><td><?= peso($requested['mooe']) ?></td><td><?= $approvedBudget ? peso($approvedBudget['mooe']) : '—' ?></td></tr>
+                <tr><th>Capital Outlay</th><td><?= peso($requested['co']) ?></td><td><?= $approvedBudget ? peso($approvedBudget['co']) : '—' ?></td></tr>
+                <tr class="cost-total"><th>Total</th><td><?= peso($requested['total']) ?></td><td><?= $approvedBudget ? peso($approvedBudget['total']) : '—' ?></td></tr>
             </table>
+            <?php if ($approvedBudget): $diff = $approvedBudget['total'] - $requested['total']; ?>
+                <p class="form-note">Budget approved by <?= e(explode(' (', $ppa['budget']['by'])[0]) ?> (Finance) on <?= e(displayDate(substr($ppa['budget']['at'], 0, 10))) ?><?= abs($diff) >= 0.01 ? ': <span class="budget-diff down">' . e(peso($diff)) . '</span> vs requested' : ', as requested' ?>.<?= $ppa['budget']['remarks'] !== '' ? ' ' . e($ppa['budget']['remarks']) : '' ?></p>
+            <?php else: ?>
+                <p class="form-note">The budget has not been approved by Finance yet.</p>
+            <?php endif; ?>
             <div class="form-divider"></div>
             <div class="allocation-head"><h3>Fund allocation</h3><?php if (can('funds.manage') && $ppa['status'] !== 'draft'): ?><a class="text-button" href="ppa-funding.php?ref=<?= urlencode($ppa['ref']) ?>">Edit allocation</a><?php endif; ?></div>
             <table class="cost-table">

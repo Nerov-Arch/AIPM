@@ -67,8 +67,8 @@ include '../includes/header.php';
 
 <section class="stat-grid four user-stats">
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Total accounts</span><span class="stat-icon blue">♙</span></div><strong><?= count($users) ?></strong><p><?= $activeCount ?> active · <?= count($users) - $activeCount ?> inactive</p></article>
-    <?php foreach (['Encoder' => 'green', 'Reviewer' => 'blue', 'Approver' => 'amber'] as $role => $color): ?>
-        <article class="stat-card"><div class="stat-top"><span class="stat-label">Active <?= e(strtolower($role)) ?>s</span><span class="stat-icon <?= $color ?>">◉</span></div><strong><?= $roleCounts[$role] ?? 0 ?></strong><p><?= e(PERMISSION_LABELS[[ 'Encoder' => 'ppa.encode', 'Reviewer' => 'review.act', 'Approver' => 'authorization.act'][$role]]) ?></p></article>
+    <?php foreach (['Encoder' => 'green', 'Reviewer' => 'blue', 'Finance' => 'amber', 'Auditor' => 'blue'] as $role => $color): ?>
+        <article class="stat-card"><div class="stat-top"><span class="stat-label">Active <?= e(strtolower($role)) ?>s</span><span class="stat-icon <?= $color ?>">◉</span></div><strong><?= $roleCounts[$role] ?? 0 ?></strong><p><?= e(PERMISSION_LABELS[['Encoder' => 'ppa.encode', 'Reviewer' => 'review.act', 'Finance' => 'budget.act', 'Auditor' => 'expenses.verify'][$role]]) ?></p></article>
     <?php endforeach; ?>
 </section>
 
@@ -80,7 +80,7 @@ include '../includes/header.php';
 
 <!-- ======================= Users ======================= -->
 <div id="tab-users" <?= $tab !== 'users' ? 'hidden' : '' ?>>
-<section class="panel users-panel" id="<?= $tableId ?>" data-table-panel data-page-size="8">
+<section class="panel users-panel" id="<?= $tableId ?>" data-table-panel data-page-size="10">
     <div class="user-table-toolbar">
         <label class="search-box wide"><span aria-hidden="true">⌕</span><span class="visually-hidden">Search users</span><input type="search" placeholder="Search by name, username or email..." data-search data-for="<?= $tableId ?>"></label>
         <div class="heading-actions">

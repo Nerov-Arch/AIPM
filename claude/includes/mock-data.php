@@ -29,6 +29,8 @@ function mockOffices(): array
         'MDRRMO' => 'Municipal Disaster Risk Reduction and Management Office',
         'MENRO'  => 'Municipal Environment and Natural Resources Office',
         'MPDO'   => 'Municipal Planning and Development Office',
+        'MBO'    => 'Municipal Budget Office',
+        'IAS'    => 'Internal Audit Service',
     ];
 }
 
@@ -64,7 +66,7 @@ function mockPpas(): array
     $fy = AIP_FISCAL_YEAR;
     return [
         ['ref' => "PPA-$fy-001", 'type' => 'Project',  'title' => 'Concreting of Barangay Farm-to-Market Road (1.2 km)', 'program' => 'Rural Infrastructure Program', 'office' => 'MEO',    'officer' => 'Engr. R. Dela Cruz', 'fund' => 'DF',     'cost' => 14500000, 'start' => "$fy-02-01", 'end' => "$fy-07-31", 'status' => 'for_review',  'updated' => '2026-10-21', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
-        ['ref' => "PPA-$fy-002", 'type' => 'Project',  'title' => 'Rehabilitation of Municipal Health Center',            'program' => 'Health Services Enhancement',  'office' => 'MHO',    'officer' => 'Dr. A. Santos',      'fund' => 'DF',     'cost' => 6800000,  'start' => "$fy-03-01", 'end' => "$fy-09-30", 'status' => 'for_review',  'updated' => '2026-10-20', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
+        ['ref' => "PPA-$fy-002", 'type' => 'Project',  'title' => 'Rehabilitation of Municipal Health Center',            'program' => 'Health Services Enhancement',  'office' => 'MHO',    'officer' => 'Dr. A. Santos',      'fund' => 'DF',     'cost' => 6800000,  'start' => "$fy-03-01", 'end' => "$fy-09-30", 'status' => 'for_budget',  'updated' => '2026-10-20', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
         ['ref' => "PPA-$fy-003", 'type' => 'Activity', 'title' => 'Community-Based Disaster Preparedness Training',       'program' => 'Disaster Risk Reduction Program','office' => 'MDRRMO', 'officer' => 'M. Reyes',           'fund' => 'LDRRMF', 'cost' => 950000,   'start' => "$fy-01-15", 'end' => "$fy-06-30", 'status' => 'for_review',  'updated' => '2026-10-19', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
         ['ref' => "PPA-$fy-004", 'type' => 'Program',  'title' => 'Supplementary Feeding Program for Day Care Children',  'program' => 'Social Protection Program',    'office' => 'MSWDO',  'officer' => 'L. Garcia',          'fund' => 'GF',     'cost' => 1800000,  'start' => "$fy-01-02", 'end' => "$fy-12-15", 'status' => 'for_review',  'updated' => '2026-10-14', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
         ['ref' => "PPA-$fy-005", 'type' => 'Project',  'title' => 'Construction of Materials Recovery Facility',          'program' => 'Solid Waste Management Program','office' => 'MENRO',  'officer' => 'J. Ramos',           'fund' => 'DF',     'cost' => 4200000,  'start' => "$fy-04-01", 'end' => "$fy-10-31", 'status' => 'returned',    'updated' => '2026-10-16', 'progress' => 0,   'utilized' => 0,       'record' => '', 'recordDate' => ''],
@@ -90,13 +92,15 @@ const MOCK_DEV_PASSWORD = 'Dev@2026';
 function mockUsers(): array
 {
     return [
-        ['id' => 1, 'username' => 'admin',     'name' => 'Maria Villanueva', 'email' => 'm.villanueva@indang.example', 'role' => 'Administrator', 'office' => 'MPDO',  'position' => 'System Administrator',                         'status' => 'Active'],
-        ['id' => 2, 'username' => 'jbautista', 'name' => 'Jose Bautista',    'email' => 'j.bautista@indang.example',   'role' => 'Reviewer',      'office' => 'MPDO',  'position' => 'Planning Officer II',                          'status' => 'Active'],
-        ['id' => 3, 'username' => 'alim',      'name' => 'Ana Lim',          'email' => 'a.lim@indang.example',        'role' => 'Approver',      'office' => 'MPDO',  'position' => 'Municipal Planning and Development Coordinator', 'status' => 'Active'],
-        ['id' => 4, 'username' => 'rdelacruz', 'name' => 'Rafael Dela Cruz', 'email' => 'r.delacruz@indang.example',   'role' => 'Encoder',       'office' => 'MEO',   'position' => 'Engineer II',                                  'status' => 'Active'],
-        ['id' => 5, 'username' => 'lgarcia',   'name' => 'Liza Garcia',      'email' => 'l.garcia@indang.example',     'role' => 'Encoder',       'office' => 'MSWDO', 'position' => 'Social Welfare Officer I',                     'status' => 'Active'],
-        ['id' => 6, 'username' => 'pmendoza',  'name' => 'Paolo Mendoza',    'email' => 'p.mendoza@indang.example',    'role' => 'Encoder',       'office' => 'MAO',   'position' => 'Agricultural Technologist',                    'status' => 'Inactive'],
-        ['id' => 7, 'username' => 'cramos',    'name' => 'Carmen Ramos',     'email' => 'c.ramos@indang.example',      'role' => 'Encoder',       'office' => 'MENRO', 'position' => 'Environmental Management Specialist',          'status' => 'Active'],
+        ['id' => 1, 'username' => 'admin',     'name' => 'Maria Villanueva', 'email' => 'm.villanueva@indang.gov.ph', 'role' => 'Administrator', 'office' => 'MPDO',  'position' => 'System Administrator',                         'status' => 'Active'],
+        ['id' => 2, 'username' => 'jbautista', 'name' => 'Jose Bautista',    'email' => 'j.bautista@indang.gov.ph',   'role' => 'Reviewer',      'office' => 'MPDO',  'position' => 'Planning Officer II',                          'status' => 'Active'],
+        ['id' => 3, 'username' => 'alim',      'name' => 'Ana Lim',          'email' => 'a.lim@indang.gov.ph',        'role' => 'Reviewer',      'office' => 'MPDO',  'position' => 'Municipal Planning and Development Coordinator', 'status' => 'Active'],
+        ['id' => 4, 'username' => 'rdelacruz', 'name' => 'Rafael Dela Cruz', 'email' => 'r.delacruz@indang.gov.ph',   'role' => 'Encoder',       'office' => 'MEO',   'position' => 'Engineer II',                                  'status' => 'Active'],
+        ['id' => 5, 'username' => 'lgarcia',   'name' => 'Liza Garcia',      'email' => 'l.garcia@indang.gov.ph',     'role' => 'Encoder',       'office' => 'MSWDO', 'position' => 'Social Welfare Officer I',                     'status' => 'Active'],
+        ['id' => 6, 'username' => 'pmendoza',  'name' => 'Paolo Mendoza',    'email' => 'p.mendoza@indang.gov.ph',    'role' => 'Encoder',       'office' => 'MAO',   'position' => 'Agricultural Technologist',                    'status' => 'Inactive'],
+        ['id' => 7, 'username' => 'cramos',    'name' => 'Carmen Ramos',     'email' => 'c.ramos@indang.gov.ph',      'role' => 'Encoder',       'office' => 'MENRO', 'position' => 'Environmental Management Specialist',          'status' => 'Active'],
+        ['id' => 8, 'username' => 'tnavarro',  'name' => 'Teresa Navarro',   'email' => 't.navarro@indang.gov.ph',    'role' => 'Finance',       'office' => 'MBO',   'position' => 'Municipal Budget Officer',                     'status' => 'Active'],
+        ['id' => 9, 'username' => 'raquino',   'name' => 'Ramon Aquino',     'email' => 'r.aquino@indang.gov.ph',     'role' => 'Auditor',       'office' => 'IAS',   'position' => 'Internal Auditor',                             'status' => 'Active'],
     ];
 }
 

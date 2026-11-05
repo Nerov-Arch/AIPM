@@ -49,7 +49,7 @@ include '../includes/header.php';
 <section class="stat-grid four">
     <article class="stat-card"><div class="stat-top"><span class="stat-label">FY <?= AIP_FISCAL_YEAR ?> ceiling</span><span class="stat-icon blue">▥</span></div><strong><?= peso($fund['ceiling']) ?></strong><p><?= e($fund['code']) ?></p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Programmed</span><span class="stat-icon green">▣</span></div><strong><?= peso($fund['programmed']) ?></strong><p><?= $fund['count'] ?> approved PPA<?= $fund['count'] === 1 ? '' : 's' ?> · <?= number_format($fund['share'], 1) ?>% of ceiling</p></article>
-    <article class="stat-card"><div class="stat-top"><span class="stat-label">Pending decision</span><span class="stat-icon amber">◔</span></div><strong><?= peso($fund['pending']) ?></strong><p><?= $fund['pendingCount'] ?> PPA<?= $fund['pendingCount'] === 1 ? '' : 's' ?> under review or authorization</p></article>
+    <article class="stat-card"><div class="stat-top"><span class="stat-label">Pending decision</span><span class="stat-icon amber">◔</span></div><strong><?= peso($fund['pending']) ?></strong><p><?= $fund['pendingCount'] ?> PPA<?= $fund['pendingCount'] === 1 ? '' : 's' ?> under review, budget review or final approval</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Available</span><span class="stat-icon <?= $fund['available'] < 0 ? 'amber' : 'green' ?>">₱</span></div><strong class="<?= $fund['available'] < 0 ? 'orange-number' : '' ?>"><?= peso($fund['available']) ?></strong><p><?= peso($fund['ceiling'] - $fund['programmed'] - $fund['pending']) ?> if all pending PPAs are approved</p></article>
 </section>
 

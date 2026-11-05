@@ -24,7 +24,7 @@ $pendingCount = count($d['pending']);
 // Approval status chart
 $segments = [
     ['Approved',       count($d['approved']),                                     'var(--green)'],
-    ['Pending',        $d['pipeline']['for_review']['count'] + $d['pipeline']['recommended']['count'], 'var(--amber)'],
+    ['Pending',        $d['pipeline']['for_review']['count'] + $d['pipeline']['for_budget']['count'] + $d['pipeline']['recommended']['count'], 'var(--amber)'],
     ['Returned',       $d['pipeline']['returned']['count'],                      '#e58a47'],
     ['Disapproved',    $d['pipeline']['disapproved']['count'],                   'var(--red)'],
 ];
@@ -39,8 +39,8 @@ foreach ($segments as [$label, $n, $color]) {
 $maxStage = max(1, ...array_values(array_column($d['pipeline'], 'count')));
 $maxSector = max(1, ...array_values(array_map(fn ($r) => $r['amount'], $d['bySector'] ?: [['amount' => 1]])));
 $maxOffice = max(1, ...array_values(array_map(fn ($r) => $r['amount'], $d['byOffice'] ?: [['amount' => 1]])));
-$awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evaluation.'
-    : (can('authorization.act') ? 'Recommended PPAs waiting for your final decision.'
+$awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evaluation, and budget-approved PPAs waiting for your final approval.'
+    : (can('budget.act') ? 'PPAs forwarded by the MPDO waiting for your budget review.'
     : (can('ppa.encode') ? 'PPAs returned to your office for revision.' : ''));
 ?>
 <div class="page-heading">
@@ -77,19 +77,19 @@ $awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evalua
         <div class="table-wrap"><table class="activity-table">
             <thead><tr><th>Ref No.</th><th>PPA</th><th>Office</th><th>Status</th><th>Waiting</th><th></th></tr></thead>
             <tbody>
-            <?php foreach (array_slice($awaiting, 0, 6) as $item): $wait = daysInStatus($item); $link = $item['status'] === 'returned' ? 'pages/projects.php?ref=' : 'pages/ppa-review.php?ref='; ?>
+            <?php foreach (array_slice($awaiting, 0, 6) as $item): $wait = daysInStatus($item); $link = $item['status'] === 'returned' ? 'pages/projects.php?ref=' : 'pages/' . decisionPageFor($item) . '?ref='; ?>
                 <tr>
                     <td><a class="ref-link" href="<?= $link . urlencode($item['ref']) ?>"><?= e($item['ref']) ?></a></td>
                     <td class="title-cell"><strong><?= e($item['title']) ?></strong></td>
                     <td><?= e($item['office']) ?></td>
                     <td><?= statusPill($item['status']) ?></td>
                     <td><span class="<?= $wait > WORKFLOW_OVERDUE_DAYS ? 'overdue-text' : 'table-subtext' ?>"><?= e(waitingLabel($wait)) ?><?= $wait > WORKFLOW_OVERDUE_DAYS ? ' · overdue' : '' ?></span></td>
-                    <td><a class="review-action" href="<?= $link . urlencode($item['ref']) ?>"><?= $item['status'] === 'returned' ? 'Revise' : ($item['status'] === 'recommended' ? 'Decide' : 'Evaluate') ?></a></td>
+                    <td><a class="review-action" href="<?= $link . urlencode($item['ref']) ?>"><?= ['returned' => 'Revise', 'recommended' => 'Approve', 'for_budget' => 'Review budget'][$item['status']] ?? 'Evaluate' ?></a></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table></div>
-        <?php if (count($awaiting) > 6): ?><p class="form-note">And <?= count($awaiting) - 6 ?> more in the <?= can('authorization.act') ? 'Authorization' : (can('review.act') ? 'Review' : 'Project Encoding') ?> queue.</p><?php endif; ?>
+        <?php if (count($awaiting) > 6): ?><p class="form-note">And <?= count($awaiting) - 6 ?> more in the <?= can('budget.act') ? 'Budget Review' : (can('review.act') ? 'Review &amp; Approval' : 'Project Encoding') ?> queue.</p><?php endif; ?>
     <?php endif; ?>
 </section>
 <?php endif; ?>
@@ -120,7 +120,8 @@ $awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evalua
         </div>
         <div class="turnaround">
             <div><span class="stat-label">Avg. time in MPDO review</span><strong><?= e(dashboardDays($d['reviewTime']['avg'])) ?></strong><small><?= $d['reviewTime']['count'] ?> evaluation<?= $d['reviewTime']['count'] === 1 ? '' : 's' ?></small></div>
-            <div><span class="stat-label">Avg. time to final decision</span><strong><?= e(dashboardDays($d['authTime']['avg'])) ?></strong><small><?= $d['authTime']['count'] ?> decision<?= $d['authTime']['count'] === 1 ? '' : 's' ?></small></div>
+            <div><span class="stat-label">Avg. time in budget review</span><strong><?= e(dashboardDays($d['budgetTime']['avg'])) ?></strong><small><?= $d['budgetTime']['count'] ?> budget decision<?= $d['budgetTime']['count'] === 1 ? '' : 's' ?></small></div>
+            <div><span class="stat-label">Avg. time to final approval</span><strong><?= e(dashboardDays($d['authTime']['avg'])) ?></strong><small><?= $d['authTime']['count'] ?> decision<?= $d['authTime']['count'] === 1 ? '' : 's' ?></small></div>
         </div>
     </article>
 </section>

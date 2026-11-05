@@ -3,8 +3,20 @@
  * Shared display helpers used by every page.
  */
 
+// All dates and times are shown in Philippine time, whatever the server's default is.
+date_default_timezone_set('Asia/Manila');
+
 /** Fiscal year of the AIP currently being prepared. MOCK: will come from the AIP cycle settings later. */
 const AIP_FISCAL_YEAR = 2027;
+
+/** Every account must be linked to an email on this government domain (sign-in codes are sent there). */
+const GOV_EMAIL_DOMAIN = 'indang.gov.ph';
+
+/** Whether an email address belongs to the LGU's government domain. */
+function isGovEmail(string $email): bool
+{
+    return (bool) preg_match('/^[^@\s]+@' . preg_quote(GOV_EMAIL_DOMAIN, '/') . '$/i', trim($email));
+}
 
 /** Escape a value for HTML output. */
 function e($value): string
@@ -15,12 +27,15 @@ function e($value): string
 /** Format an amount in pesos, e.g. ₱12,500,000.00 */
 function peso(float $amount): string
 {
-    return '₱' . number_format($amount, 2);
+    return ($amount < -0.004 ? '-₱' : '₱') . number_format(abs($amount), 2);
 }
 
 /** Short peso format for cards, e.g. ₱12.5M */
 function pesoShort(float $amount): string
 {
+    if ($amount < -0.004) {
+        return '-' . pesoShort(-$amount);
+    }
     if ($amount >= 1000000000) {
         return '₱' . rtrim(rtrim(number_format($amount / 1000000000, 2), '0'), '.') . 'B';
     }
@@ -63,7 +78,8 @@ function statusLabel(string $status): string
         'draft'       => 'Draft',
         'for_review'  => 'Pending Review',
         'returned'    => 'Returned for Revision',
-        'recommended' => 'Pending Authorization',
+        'for_budget'  => 'Budget Review',
+        'recommended' => 'For Final Approval',
         'approved'    => 'Approved',
         'disapproved' => 'Disapproved',
         'ongoing'     => 'Ongoing',
@@ -78,6 +94,7 @@ function statusClass(string $status): string
         'draft'       => 'inactive',
         'for_review'  => 'for-review',
         'returned'    => 'rejected',
+        'for_budget'  => 'pending',
         'recommended' => 'pending',
         'approved'    => 'approved',
         'disapproved' => 'rejected',

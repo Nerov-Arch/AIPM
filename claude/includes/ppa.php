@@ -19,8 +19,17 @@ function ppaSectors(): array
     ];
 }
 
-/** Statuses in which the encoding office may still edit a PPA. */
-const PPA_EDITABLE_STATUSES = ['draft', 'returned'];
+/**
+ * Statuses in which the encoding office may still edit a PPA. While it is
+ * Pending Review (before the MPDO forwards it to Finance) the office can still
+ * correct it; every such edit is recorded and shown to the reviewer.
+ */
+const PPA_EDITABLE_STATUSES = ['draft', 'returned', 'for_review'];
+/** Statuses from which the office may submit (or resubmit) a PPA. */
+const PPA_SUBMITTABLE_STATUSES = ['draft', 'returned'];
+
+/** Climate change expenditure fields: entered by the MPDO at final approval, not by the office. */
+const PPA_CC_FIELDS = ['cc_adaptation', 'cc_mitigation', 'cc_typology'];
 
 /** Every field of a PPA record, with its label (used for change logs). */
 const PPA_FIELDS = [
@@ -49,6 +58,8 @@ function ppaSeedRecords(): array
     $records = [];
     foreach (mockPpas() as $ppa) {
         $isProject = $ppa['type'] === 'Project';
+        $decided = in_array($ppa['status'], ['approved', 'ongoing', 'completed'], true);
+        $climate = $decided && in_array($ppa['office'], ['MDRRMO', 'MENRO'], true);
         $record = $ppa + [
             'sector'          => $sectorByOffice[$ppa['office']] ?? 'GPS',
             'description'     => 'Sample description for ' . $ppa['title'] . '.',
@@ -56,9 +67,10 @@ function ppaSeedRecords(): array
             'ps'              => 0,
             'mooe'            => $isProject ? 0 : $ppa['cost'],
             'co'              => $isProject ? $ppa['cost'] : 0,
-            'cc_adaptation'   => in_array($ppa['office'], ['MDRRMO', 'MENRO'], true) ? round($ppa['cost'] * 0.5, 2) : 0,
+            // Climate change expenditure is only entered at final approval.
+            'cc_adaptation'   => $climate ? round($ppa['cost'] * 0.5, 2) : 0,
             'cc_mitigation'   => 0,
-            'cc_typology'     => in_array($ppa['office'], ['MDRRMO', 'MENRO'], true) ? 'A612-01' : '',
+            'cc_typology'     => $climate ? 'A612-01' : '',
             'remarks'         => '',
             'created_by'      => 'System (sample data)',
             'created_at'      => $ppa['updated'] . ' 08:00:00',
@@ -70,6 +82,21 @@ function ppaSeedRecords(): array
         if ($ppa['ref'] === 'PPA-' . AIP_FISCAL_YEAR . '-013') {
             // MOCK: a split allocation that does not add up, to demonstrate the funding checks.
             $record['allocations'] = ['GF' => 2000000, 'TF' => 400000];
+        }
+        // MOCK: Finance budget decisions for PPAs past budget review. Two were approved
+        // below the requested amount to demonstrate the requested vs approved comparison.
+        if (in_array($ppa['status'], ['recommended', 'approved', 'ongoing', 'completed'], true)) {
+            $requested = ['ps' => $record['ps'], 'mooe' => $record['mooe'], 'co' => $record['co']];
+            $cut = ['PPA-' . AIP_FISCAL_YEAR . '-006' => 300000, 'PPA-' . AIP_FISCAL_YEAR . '-011' => 300000][$ppa['ref']] ?? 0;
+            $requested[$isProject ? 'co' : 'mooe'] += $cut;
+            $record['budget'] = [
+                'requested' => $requested,
+                'approved'  => ['ps' => $record['ps'], 'mooe' => $record['mooe'], 'co' => $record['co']],
+                'by'        => 'Teresa Navarro (tnavarro)',
+                'by_id'     => 8,
+                'at'        => $ppa['updated'] . ' 10:00:00',
+                'remarks'   => $cut ? 'Approved at a lower amount based on the updated cost estimate.' : '',
+            ];
         }
         if ($ppa['status'] === 'returned') {
             $record['remarks'] = 'Please indicate the exact site and number of barangays served, and break down the cost into MOOE and Capital Outlay.';
@@ -134,7 +161,8 @@ function storeSavePpa(array $data, string $historyAction, string $remarks = ''):
     if (empty($data['ref'])) {
         $data['ref'] = nextPpaRef();
         $data += ['created_by' => $actorName, 'created_by_id' => $actor['id'] ?? null, 'created_at' => $now, 'history' => [], 'remarks' => '', 'progress' => 0, 'utilized' => 0,
-                  'record' => '', 'recordDate' => '', 'officer' => $actor['name'] ?? '', 'submitted_at' => ''];
+                  'record' => '', 'recordDate' => '', 'officer' => $actor['name'] ?? '', 'submitted_at' => '',
+                  'cc_adaptation' => 0, 'cc_mitigation' => 0, 'cc_typology' => '', 'budget' => null];
     }
     $existing = $_SESSION['mock_store']['ppas'][$data['ref']] ?? [];
     $record = array_merge($existing, $data);
@@ -170,6 +198,43 @@ function ppaTotal(array $ppa): float
 function ppaIsEditable(array $ppa): bool
 {
     return in_array($ppa['status'], PPA_EDITABLE_STATUSES, true);
+}
+
+/** Whether the office may submit (or resubmit) this PPA for review. */
+function ppaCanSubmit(array $ppa): bool
+{
+    return in_array($ppa['status'], PPA_SUBMITTABLE_STATUSES, true);
+}
+
+/** Fields the implementing office fills in (everything except climate change expenditure). */
+function ppaEncoderFields(): array
+{
+    return array_diff_key(PPA_FIELDS, array_flip(PPA_CC_FIELDS));
+}
+
+/**
+ * The budget the office requested, by expense class. Before Finance decides,
+ * this is simply the PPA's current cost; afterwards it is kept separately so it
+ * can be compared with the approved budget.
+ */
+function ppaRequested(array $ppa): array
+{
+    $r = $ppa['budget']['requested'] ?? ['ps' => $ppa['ps'] ?? 0, 'mooe' => $ppa['mooe'] ?? 0, 'co' => $ppa['co'] ?? 0];
+    $r = ['ps' => (float) $r['ps'], 'mooe' => (float) $r['mooe'], 'co' => (float) $r['co']];
+    $r['total'] = round($r['ps'] + $r['mooe'] + $r['co'], 2);
+    return $r;
+}
+
+/** The budget Finance approved, or null while it has not decided yet. */
+function ppaApprovedBudget(array $ppa): ?array
+{
+    $a = $ppa['budget']['approved'] ?? null;
+    if (!$a) {
+        return null;
+    }
+    $a = ['ps' => (float) $a['ps'], 'mooe' => (float) $a['mooe'], 'co' => (float) $a['co']];
+    $a['total'] = round($a['ps'] + $a['mooe'] + $a['co'], 2);
+    return $a;
 }
 
 /** Whether the signed-in user may edit this PPA. */
@@ -265,7 +330,7 @@ function validatePpa(array $input, bool $isDraft, array $offices, ?string $curre
         $errors['end'] = 'Completion date cannot be earlier than the start date.';
     }
 
-    foreach (['ps', 'mooe', 'co', 'cc_adaptation', 'cc_mitigation'] as $field) {
+    foreach (['ps', 'mooe', 'co'] as $field) {
         $value = parseMoney($input[$field] ?? '');
         if ($value === null) {
             $errors[$field] = 'Enter a valid amount, e.g. 1,250,000.00';
@@ -281,19 +346,6 @@ function validatePpa(array $input, bool $isDraft, array $offices, ?string $curre
     if (!$isDraft && $total <= 0 && !isset($errors['ps'], $errors['mooe'], $errors['co'])) {
         $errors['co'] = 'Enter the cost under at least one expense class (PS, MOOE or CO).';
     }
-    $ccTotal = $clean['cc_adaptation'] + $clean['cc_mitigation'];
-    if ($ccTotal > $total + 0.001 && !isset($errors['cc_adaptation'])) {
-        $errors['cc_adaptation'] = 'Climate change expenditure cannot exceed the total cost.';
-    }
-
-    $clean['cc_typology'] = strtoupper($input['cc_typology'] ?? '');
-    if ($clean['cc_typology'] !== '' && !preg_match('/^[A-Z0-9][A-Z0-9.\-]{1,19}$/', $clean['cc_typology'])) {
-        $errors['cc_typology'] = 'Use letters, numbers, dots or dashes (e.g. A612-01).';
-    }
-    if ($ccTotal > 0 && $clean['cc_typology'] === '' && !$isDraft) {
-        $errors['cc_typology'] = 'A typology code is required when climate change expenditure is entered.';
-    }
-
     // Prevent the same PPA from being encoded twice for one office in one AIP year.
     if (!isset($errors['title']) && $clean['title'] !== '') {
         foreach (storePpas() as $other) {
@@ -314,6 +366,9 @@ function ppaChanges(array $before, array $after): array
 {
     $changes = [];
     foreach (PPA_FIELDS as $field => $label) {
+        if (!array_key_exists($field, $after)) {
+            continue;
+        }
         $old = (string) ($before[$field] ?? '');
         $new = (string) ($after[$field] ?? '');
         if (in_array($field, ['ps', 'mooe', 'co', 'cc_adaptation', 'cc_mitigation'], true)) {

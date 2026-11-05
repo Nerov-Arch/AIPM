@@ -109,11 +109,11 @@ include '../includes/header.php';
         <?php endif; ?>
     </section>
     <section class="panel">
-        <div class="panel-heading"><div><h2>Finalize</h2><p class="muted">The approver marks one version as the final consolidated AIP.</p></div></div>
+        <div class="panel-heading"><div><h2>Finalize</h2><p class="muted">The MPDO reviewer marks one version as the final consolidated AIP.</p></div></div>
         <?php if ($version['status'] !== 'draft'): ?>
             <p class="muted"><?= $version['status'] === 'final' ? 'This version is final.' : 'This version has been superseded.' ?></p>
         <?php elseif (!can('consolidation.finalize')): ?>
-            <p class="muted">Waiting for the approver to finalize.</p>
+            <p class="muted">Waiting for an MPDO reviewer to finalize.</p>
         <?php elseif ($changeCount): ?>
             <p class="funding-issue warning">Approved PPAs changed after this version was saved. Ask the MPDO to save a new version and finalize that one.</p>
         <?php else: ?>

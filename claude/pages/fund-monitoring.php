@@ -58,7 +58,26 @@ $totalPending = $sum('pending');
 $totalUtilized = $sum('utilized');
 $programmedPct = $totalCeiling ? round($totalProgrammed / $totalCeiling * 100, 1) : 0;
 $utilizedPct = $totalProgrammed ? round($totalUtilized / $totalProgrammed * 100, 1) : 0;
-$tab = in_array($_GET['tab'] ?? '', ['sources', 'ppas', 'issues'], true) ? $_GET['tab'] : 'sources';
+$tab = in_array($_GET['tab'] ?? '', ['sources', 'ppas', 'budget', 'issues'], true) ? $_GET['tab'] : 'sources';
+
+// Requested vs approved budget: every PPA on which Finance has decided.
+$budgetRows = [];
+$budgetByFund = [];
+foreach (visiblePpas() as $p) {
+    $approvedBudget = ppaApprovedBudget($p);
+    if (!$approvedBudget) {
+        continue;
+    }
+    $requested = ppaRequested($p);
+    $budgetRows[] = ['ppa' => $p, 'requested' => $requested['total'], 'approved' => $approvedBudget['total']];
+    $key = $p['fund'] ?: '—';
+    $budgetByFund[$key] ??= ['requested' => 0.0, 'approved' => 0.0, 'count' => 0];
+    $budgetByFund[$key]['requested'] += $requested['total'];
+    $budgetByFund[$key]['approved'] += $approvedBudget['total'];
+    $budgetByFund[$key]['count']++;
+}
+$budgetRequested = array_sum(array_column($budgetRows, 'requested'));
+$budgetApproved = array_sum(array_column($budgetRows, 'approved'));
 
 include '../includes/header.php';
 ?>
@@ -72,13 +91,14 @@ include '../includes/header.php';
 <section class="stat-grid four">
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Total fund ceiling</span><span class="stat-icon blue">▥</span></div><strong><?= pesoShort($totalCeiling) ?></strong><p><?= count($active) ?> active fund sources</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Programmed (approved)</span><span class="stat-icon green">▣</span></div><strong><?= pesoShort($totalProgrammed) ?></strong><div class="progress-track"><span style="width:<?= min(100, $programmedPct) ?>%"></span></div><p><?= $programmedPct ?>% of ceiling · <?= pesoShort($totalCeiling - $totalProgrammed) ?> available</p></article>
-    <article class="stat-card"><div class="stat-top"><span class="stat-label">Pending decision</span><span class="stat-icon amber">◔</span></div><strong><?= pesoShort($totalPending) ?></strong><p>Under review, authorization or revision</p></article>
+    <article class="stat-card"><div class="stat-top"><span class="stat-label">Pending decision</span><span class="stat-icon amber">◔</span></div><strong><?= pesoShort($totalPending) ?></strong><p>Under review, budget review, final approval or revision</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Funding issues</span><span class="stat-icon <?= $errorCount ? 'amber' : 'green' ?>">!</span></div><strong class="<?= $errorCount ? 'orange-number' : '' ?>"><?= count($issues) ?></strong><p><?= $errorCount ?> error<?= $errorCount === 1 ? '' : 's' ?> · <?= count($issues) - $errorCount ?> warning<?= count($issues) - $errorCount === 1 ? '' : 's' ?> · <?= $utilizedPct ?>% of programmed utilized</p></article>
 </section>
 
 <div class="tab-bar" role="tablist" aria-label="Fund monitoring sections">
     <button type="button" role="tab" class="<?= $tab === 'sources' ? 'active' : '' ?>" aria-pressed="<?= $tab === 'sources' ? 'true' : 'false' ?>" data-view-group="fund-tabs" data-view-show="#tab-sources">Fund sources (<?= count($totals) ?>)</button>
     <button type="button" role="tab" class="<?= $tab === 'ppas' ? 'active' : '' ?>" aria-pressed="<?= $tab === 'ppas' ? 'true' : 'false' ?>" data-view-group="fund-tabs" data-view-show="#tab-ppas">PPA funding (<?= count($ppas) ?>)</button>
+    <button type="button" role="tab" class="<?= $tab === 'budget' ? 'active' : '' ?>" aria-pressed="<?= $tab === 'budget' ? 'true' : 'false' ?>" data-view-group="fund-tabs" data-view-show="#tab-budget">Requested vs approved (<?= count($budgetRows) ?>)</button>
     <button type="button" role="tab" class="<?= $tab === 'issues' ? 'active' : '' ?>" aria-pressed="<?= $tab === 'issues' ? 'true' : 'false' ?>" data-view-group="fund-tabs" data-view-show="#tab-issues">Funding issues (<?= count($issues) ?>)</button>
 </div>
 
@@ -190,6 +210,41 @@ include '../includes/header.php';
 </div>
 
 <!-- ======================= Issues ======================= -->
+<!-- ======================= Requested vs approved budget ======================= -->
+<div id="tab-budget" <?= $tab !== 'budget' ? 'hidden' : '' ?>>
+<section class="panel flush-panel">
+    <div class="panel-heading"><div><h2>Requested vs Approved Budget</h2><p class="muted">The budget each office requested compared with what Finance approved. <?= pesoShort($budgetApproved) ?> approved of <?= pesoShort($budgetRequested) ?> requested (<?= pesoShort($budgetApproved - $budgetRequested) ?>).</p></div></div>
+    <div class="table-wrap">
+        <table class="activity-table" data-budget-table>
+            <thead><tr><th>Fund source</th><th>PPAs</th><th>Requested</th><th>Approved</th><th>Difference</th><th>Approved share</th></tr></thead>
+            <tbody>
+            <?php foreach ($budgetByFund as $key => $row): $diff = $row['approved'] - $row['requested']; ?>
+                <tr><td><strong><?= e($key === '—' ? 'Not set' : fundName($key)) ?></strong></td><td><?= $row['count'] ?></td><td class="amount"><?= peso($row['requested']) ?></td><td class="amount"><?= peso($row['approved']) ?></td><td class="<?= $diff < -0.001 ? 'budget-diff down' : '' ?>"><?= peso($diff) ?></td><td><?= $row['requested'] > 0 ? number_format($row['approved'] / $row['requested'] * 100, 1) : '0.0' ?>%</td></tr>
+            <?php endforeach; ?>
+            <?php if (!$budgetByFund): ?><tr><td class="empty-cell" colspan="6">Finance has not decided on any budget yet.</td></tr><?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <div class="table-wrap">
+        <table class="activity-table">
+            <thead><tr><th>Ref No.</th><th>PPA</th><th>Status</th><th>Requested</th><th>Approved</th><th>Difference</th></tr></thead>
+            <tbody>
+            <?php foreach ($budgetRows as $row): $p = $row['ppa']; $diff = $row['approved'] - $row['requested']; ?>
+                <tr data-budget-row="<?= e($p['ref']) ?>">
+                    <td><a class="ref-link" href="<?= can('budget.view') ? 'budget-review.php' : 'ppa-view.php' ?>?ref=<?= urlencode($p['ref']) ?>"><?= e($p['ref']) ?></a></td>
+                    <td class="title-cell"><strong><?= e($p['title']) ?></strong><small class="table-subtext"><?= e(officeName($p['office'])) ?> · by <?= e(explode(' (', $p['budget']['by'])[0]) ?></small></td>
+                    <td><?= statusPill($p['status']) ?></td>
+                    <td class="amount"><?= peso($row['requested']) ?></td>
+                    <td class="amount"><?= peso($row['approved']) ?></td>
+                    <td class="<?= $diff < -0.001 ? 'budget-diff down' : 'table-subtext' ?>"><?= abs($diff) < 0.01 ? 'As requested' : peso($diff) . ' (' . number_format($diff / max(1, $row['requested']) * 100, 1) . '%)' ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
+</div>
+
 <div id="tab-issues" <?= $tab !== 'issues' ? 'hidden' : '' ?>>
 <section class="panel flush-panel">
     <div class="panel-heading"><div><h2>Funding Issues</h2><p class="muted">Checked automatically every time this page loads. Resolve errors before consolidating the AIP.</p></div></div>

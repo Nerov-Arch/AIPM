@@ -29,12 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success', 'Draft ' . e($ppa['ref']) . ' was deleted.');
         }
     } elseif ($action === 'submit') {
-        if (!ppaIsEditable($ppa)) {
+        if (!ppaCanSubmit($ppa)) {
             flash('error', e($ppa['ref']) . ' has already been submitted.');
         } else {
             $input = [];
-            foreach (array_keys(PPA_FIELDS) as $field) {
-                $input[$field] = in_array($field, ['ps', 'mooe', 'co', 'cc_adaptation', 'cc_mitigation'], true)
+            foreach (array_keys(ppaEncoderFields()) as $field) {
+                $input[$field] = in_array($field, ['ps', 'mooe', 'co'], true)
                     ? ((float) $ppa[$field] > 0 ? number_format((float) $ppa[$field], 2, '.', '') : '')
                     : (string) ($ppa[$field] ?? '');
             }
@@ -60,7 +60,7 @@ $count = fn (array $statuses) => count(array_filter($ppas, fn ($p) => in_array($
 $groups = [
     'draft'     => ['draft'],
     'returned'  => ['returned'],
-    'submitted' => ['for_review', 'recommended'],
+    'submitted' => ['for_review', 'for_budget', 'recommended'],
     'decided'   => ['approved', 'disapproved', 'ongoing', 'completed'],
 ];
 $groupOf = function (string $status) use ($groups): string {
@@ -87,7 +87,7 @@ include '../includes/header.php';
 <section class="stat-grid four">
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Drafts</span><span class="stat-icon blue">▤</span></div><strong><?= $count($groups['draft']) ?></strong><p>Not yet submitted</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Returned for revision</span><span class="stat-icon amber">↺</span></div><strong class="<?= $count($groups['returned']) ? 'orange-number' : '' ?>"><?= $count($groups['returned']) ?></strong><p>Need changes before resubmitting</p></article>
-    <article class="stat-card"><div class="stat-top"><span class="stat-label">With the MPDO</span><span class="stat-icon green">✓</span></div><strong><?= $count($groups['submitted']) ?></strong><p>Under review or authorization</p></article>
+    <article class="stat-card"><div class="stat-top"><span class="stat-label">With the MPDO</span><span class="stat-icon green">✓</span></div><strong><?= $count($groups['submitted']) ?></strong><p>Under review, budget review or final approval</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Total proposed cost</span><span class="stat-icon blue">₱</span></div><strong><?= pesoShort($proposedTotal) ?></strong><p>Excluding disapproved PPAs</p></article>
 </section>
 
@@ -120,10 +120,12 @@ include '../includes/header.php';
                             <a class="text-button" href="ppa-view.php?ref=<?= urlencode($ppa['ref']) ?>">View</a>
                             <?php if ($editable): ?>
                                 <a class="text-button" href="projects.php?ref=<?= urlencode($ppa['ref']) ?>"><?= $ppa['status'] === 'returned' ? 'Revise' : 'Edit' ?></a>
-                                <form method="post" data-confirm="<?= $ppa['status'] === 'returned' ? 'Resubmit' : 'Submit' ?> <?= e($ppa['ref']) ?> to the MPDO for review? You will not be able to edit it unless it is returned.">
+                                <?php if (ppaCanSubmit($ppa)): ?>
+                                <form method="post" data-confirm="<?= $ppa['status'] === 'returned' ? 'Resubmit' : 'Submit' ?> <?= e($ppa['ref']) ?> to the MPDO for review?">
                                     <?= csrfField() ?><input type="hidden" name="action" value="submit"><input type="hidden" name="ref" value="<?= e($ppa['ref']) ?>">
                                     <button class="text-button" type="submit"><?= $ppa['status'] === 'returned' ? 'Resubmit' : 'Submit' ?></button>
                                 </form>
+                                <?php endif; ?>
                             <?php endif; ?>
                             <?php if ($ppa['status'] === 'draft'): ?>
                                 <form method="post" data-confirm="Delete draft <?= e($ppa['ref']) ?>? This cannot be undone.">

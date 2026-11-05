@@ -56,6 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['email'] = 'Email address is required.';
     } elseif (!filter_var($old['email'], FILTER_VALIDATE_EMAIL) || mb_strlen($old['email']) > 150) {
         $errors['email'] = 'Enter a valid email address.';
+    } elseif (!isGovEmail($old['email'])) {
+        $errors['email'] = 'Use the person\'s @' . GOV_EMAIL_DOMAIN . ' government email. Sign-in codes are sent there.';
     }
 
     foreach (storeUsers() as $other) {
@@ -144,7 +146,7 @@ include '../includes/header.php';
         <label>Full Name <em>*</em><input name="name" type="text" maxlength="100" value="<?= e($old['name']) ?>" autocomplete="off" required><small class="field-error" data-error-for="name"><?= e($errors['name'] ?? '') ?></small></label>
         <div class="form-columns">
             <label>Username <em>*</em><input name="username" type="text" maxlength="30" pattern="[a-z0-9._\-]{3,30}" data-rule="username" value="<?= e($old['username']) ?>" autocomplete="off" required><small>Lowercase letters, numbers, dots, dashes or underscores.</small><small class="field-error" data-error-for="username"><?= e($errors['username'] ?? '') ?></small></label>
-            <label>Email Address <em>*</em><input name="email" type="email" maxlength="150" data-rule="email" value="<?= e($old['email']) ?>" autocomplete="off" required><small class="field-error" data-error-for="email"><?= e($errors['email'] ?? '') ?></small></label>
+            <label>Government Email <em>*</em><input name="email" type="email" maxlength="150" data-rule="gov-email" data-domain="<?= e(GOV_EMAIL_DOMAIN) ?>" placeholder="name@<?= e(GOV_EMAIL_DOMAIN) ?>" value="<?= e($old['email']) ?>" autocomplete="off" required><small>Must be an @<?= e(GOV_EMAIL_DOMAIN) ?> address. The one-time sign-in code is sent here.</small><small class="field-error" data-error-for="email"><?= e($errors['email'] ?? '') ?></small></label>
         </div>
         <label>Position / Designation<input name="position" type="text" maxlength="100" placeholder="e.g. Planning Officer II" value="<?= e($old['position']) ?>"><small class="field-error" data-error-for="position"><?= e($errors['position'] ?? '') ?></small></label>
     </section>

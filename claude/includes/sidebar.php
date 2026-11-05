@@ -11,9 +11,10 @@ $navGroups = [
         'linking'  => ['href' => 'pages/project-linking.php', 'icon' => '⛓', 'label' => 'Project Linking', 'perm' => 'linking.view'],
     ],
     'Workflow' => [
-        'review'         => ['href' => 'pages/review-workflow.php',         'icon' => '✓', 'label' => 'Review', 'perm' => 'review.view'],
-        'authorization'  => ['href' => 'pages/authorization-workflow.php',  'icon' => '✎', 'label' => 'Authorization', 'perm' => 'authorization.view'],
+        'review'         => ['href' => 'pages/review-workflow.php',         'icon' => '✓', 'label' => 'Review & Approval', 'perm' => 'review.view'],
+        'budget'         => ['href' => 'pages/budget-workflow.php',         'icon' => '₱', 'label' => 'Budget Review', 'perm' => 'budget.view'],
         'implementation' => ['href' => 'pages/implementation-workflow.php', 'icon' => '▶', 'label' => 'Implementation', 'perm' => 'implementation.view'],
+        'expenses'       => ['href' => 'pages/expenditures.php',            'icon' => '⎙', 'label' => 'Expenditure Audit', 'perm' => 'expenses.view'],
     ],
     'Reports & Funds' => [
         'consolidation' => ['href' => 'pages/aip-consolidation.php', 'icon' => '▣', 'label' => 'AIP Consolidation', 'perm' => 'consolidation.view'],

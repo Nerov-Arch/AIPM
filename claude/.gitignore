@@ -1,0 +1,3 @@
+# Uploaded receipt files are user data, never committed.
+uploads/receipts/*
+!uploads/receipts/.gitkeep

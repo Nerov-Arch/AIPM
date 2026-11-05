@@ -1,7 +1,9 @@
 <?php
 /**
- * PPA encoding form: create a new PPA, or edit a draft / returned PPA.
- * Uses the standardized AIP fields defined in includes/ppa.php.
+ * PPA encoding form: create a new PPA, or edit a draft, a returned PPA, or a
+ * PPA still under MPDO review (Pending Review). Uses the standardized AIP fields
+ * in includes/ppa.php. Climate change expenditure is not encoded here: the MPDO
+ * enters it at final approval.
  */
 $pageSection = 'Planning';
 $activePage = 'projects';
@@ -18,7 +20,8 @@ $fundSources = activeFundSources();
 $sectors = ppaSectors();
 $fyStart = AIP_FISCAL_YEAR . '-01-01';
 $fyEnd = AIP_FISCAL_YEAR . '-12-31';
-$moneyFields = ['ps', 'mooe', 'co', 'cc_adaptation', 'cc_mitigation'];
+$moneyFields = ['ps', 'mooe', 'co'];
+$formFields = array_keys(ppaEncoderFields());
 
 $editing = null;
 if (isset($_GET['ref'])) {
@@ -35,11 +38,12 @@ if (isset($_GET['ref'])) {
     }
 }
 $isReturned = $editing && $editing['status'] === 'returned';
+$inReview = $editing && $editing['status'] === 'for_review';
 $pageTitle = $editing ? 'Edit ' . $editing['ref'] : 'New PPA';
 
 // Values shown in the form.
 $old = [];
-foreach (array_keys(PPA_FIELDS) as $field) {
+foreach ($formFields as $field) {
     $value = $editing[$field] ?? '';
     if (in_array($field, $moneyFields, true)) {
         $value = ($editing && (float) $value > 0) ? number_format((float) $value, 2) : '';
@@ -53,15 +57,34 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
-    foreach (array_keys(PPA_FIELDS) as $field) {
+    foreach ($formFields as $field) {
         $old[$field] = trim((string) ($_POST[$field] ?? ''));
     }
-    $isDraft = isset($_POST['save_draft']);
+    // A PPA under review is validated as a full submission; it stays Pending Review.
+    $isDraft = isset($_POST['save_draft']) && !$inReview;
     [$errors, $clean] = validatePpa($old, $isDraft, $offices, $editing['ref'] ?? null);
 
     if (!$errors) {
         if ($editing) {
             $changes = ppaChanges($editing, $clean);
+            if ($inReview) {
+                $latest = storeFindPpa($editing['ref']);
+                if (!$latest || $latest['status'] !== 'for_review') {
+                    flash('error', e($editing['ref']) . ' was already acted on by the MPDO, so your changes were not saved.');
+                    header('Location: ppa-view.php?ref=' . urlencode($editing['ref']));
+                    exit;
+                }
+                if (!$changes) {
+                    flash('info', 'No changes were made to ' . e($editing['ref']) . '.');
+                } else {
+                    $saved = storeSavePpa(['ref' => $editing['ref'], 'edited_in_review_at' => date('Y-m-d H:i:s')] + $clean,
+                        'Edited by the office while under review', implode('; ', $changes));
+                    auditLog('ppa.edit_in_review', $saved['ref'], implode('; ', $changes));
+                    flash('success', 'Changes to ' . e($saved['ref']) . ' were saved. The MPDO reviewer will see what you changed.');
+                }
+                header('Location: ppa-view.php?ref=' . urlencode($editing['ref']));
+                exit;
+            }
             if ($isDraft) {
                 $saved = storeSavePpa(['ref' => $editing['ref']] + $clean, $changes ? 'Edited' : 'Saved without changes');
                 if ($changes) {
@@ -75,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     auditLog('ppa.update', $saved['ref'], implode('; ', $changes));
                 }
                 auditLog($isReturned ? 'ppa.resubmit' : 'ppa.submit', $saved['ref'], $saved['title'] . ' · ' . peso($saved['cost']));
-                flash('success', e($saved['ref']) . ' was ' . ($isReturned ? 'resubmitted' : 'submitted') . ' to the MPDO for review. It can no longer be edited unless it is returned.');
+                flash('success', e($saved['ref']) . ' was ' . ($isReturned ? 'resubmitted' : 'submitted') . ' to the MPDO for review. You can still correct it until the MPDO forwards it to Finance.');
             }
         } else {
             $status = $isDraft ? 'draft' : 'for_review';
@@ -110,7 +133,11 @@ include '../includes/header.php';
     <?php if ($editing): ?><div class="heading-actions"><?= statusPill($editing['status']) ?></div><?php endif; ?>
 </div>
 
-<section class="workflow-stepper" aria-label="Workflow stage"><div class="step active"><span>1</span><b>PREPARATION</b></div><div class="step"><span>2</span><b>REVIEW</b></div><div class="step"><span>3</span><b>AUTHORIZATION</b></div><div class="step"><span>4</span><b>IMPLEMENTATION</b></div></section>
+<section class="workflow-stepper five" aria-label="Workflow stage"><div class="step <?= $inReview ? '' : 'active' ?>"><span>1</span><b>PREPARATION</b></div><div class="step <?= $inReview ? 'active' : '' ?>"><span>2</span><b>MPDO REVIEW</b></div><div class="step"><span>3</span><b>BUDGET REVIEW</b></div><div class="step"><span>4</span><b>FINAL APPROVAL</b></div><div class="step"><span>5</span><b>IMPLEMENTATION</b></div></section>
+
+<?php if ($inReview): ?>
+    <div class="alert info" role="status"><strong>This PPA is under MPDO review.</strong> You can still correct it until the MPDO forwards it to Finance. Each change is recorded and shown to the reviewer.</div>
+<?php endif; ?>
 
 <?php if ($isReturned && $editing['remarks'] !== ''): ?>
     <div class="alert error remarks-alert" role="status"><strong>Returned by the MPDO for revision.</strong> <?= e($editing['remarks']) ?></div>
@@ -161,19 +188,17 @@ include '../includes/header.php';
             <div class="total-cost"><span>Total Estimated Cost</span><strong data-total-display>₱0.00</strong></div>
             <label>Fund Source <em>*</em><select name="fund" required><option value="">Select source</option><?php foreach ($fundSources as $code => $fund): ?><option value="<?= e($code) ?>" <?= $old['fund'] === $code ? 'selected' : '' ?>><?= e($fund['name']) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'fund') ?></label>
         </section>
-        <section class="panel form-panel">
-            <div class="form-section-heading"><span class="section-icon green-bg">♻</span><div><h2>4. Climate Change Expenditure</h2><p>Leave blank if not applicable.</p></div></div>
-            <div class="form-divider"></div>
-            <label>Adaptation<div class="currency-input"><span>₱</span><input name="cc_adaptation" type="text" inputmode="decimal" placeholder="0.00" data-rule="money-optional" value="<?= e($old['cc_adaptation']) ?>"></div><?= fieldError($errors, 'cc_adaptation') ?></label>
-            <label>Mitigation<div class="currency-input"><span>₱</span><input name="cc_mitigation" type="text" inputmode="decimal" placeholder="0.00" data-rule="money-optional" value="<?= e($old['cc_mitigation']) ?>"></div><?= fieldError($errors, 'cc_mitigation') ?></label>
-            <label>CC Typology Code<input name="cc_typology" type="text" maxlength="20" placeholder="e.g. A612-01" value="<?= e($old['cc_typology']) ?>"><small>Required when an adaptation or mitigation amount is entered.</small><?= fieldError($errors, 'cc_typology') ?></label>
-        </section>
+        <p class="form-note">Climate change expenditure (adaptation, mitigation and typology code) is entered by the MPDO at final approval.</p>
     </div>
 
     <div class="form-actions">
         <a class="secondary-button" href="<?= $editing ? 'ppa-view.php?ref=' . urlencode($editing['ref']) : 'ppas.php' ?>">Cancel</a>
+        <?php if ($inReview): ?>
+        <button class="primary-button" type="submit" name="save_review" value="1" data-confirm-submit="Save your changes to this PPA? The MPDO reviewer will see what you changed.">Save changes</button>
+        <?php else: ?>
         <button class="secondary-button" type="submit" name="save_draft" value="1" data-draft><?= $isReturned ? 'Save changes' : 'Save Draft' ?></button>
-        <button class="primary-button" type="submit" name="submit_review" value="1" data-confirm-submit="<?= $isReturned ? 'Resubmit this PPA to the MPDO? You will not be able to edit it unless it is returned again.' : 'Submit this PPA to the MPDO for review? You will not be able to edit it unless it is returned.' ?>"><?= $isReturned ? 'Resubmit for Review' : 'Submit for Review' ?> <span>→</span></button>
+        <button class="primary-button" type="submit" name="submit_review" value="1" data-confirm-submit="<?= $isReturned ? 'Resubmit this PPA to the MPDO? You can still correct it while it is pending review.' : 'Submit this PPA to the MPDO for review? You can still correct it while it is pending review.' ?>"><?= $isReturned ? 'Resubmit for Review' : 'Submit for Review' ?> <span>→</span></button>
+        <?php endif; ?>
     </div>
     <p class="form-note">Fields marked <em>*</em> are required to submit. A draft needs only a title and office.</p>
 </form>

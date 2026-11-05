@@ -1,19 +1,20 @@
 <?php
 /**
- * Shared queue layout for the Review, Authorization and Implementation pages.
+ * Shared queue layout for the Review & Approval, Budget Review and Implementation pages.
  *
  * The including page sets $queue:
  *   eyebrow, title, description, step (1-4),
  *   pending (status codes), processed (status codes),
  *   pendingHeading, processedHeading, actionLabel, actPermission,
- *   decisionPage (bool), showProgress (bool)
+ *   decisionPage (bool), showProgress (bool), showBudget (bool),
+ *   actionLabels (status => label for rows the user can act on)
  *
  * Rows come from the PPA store (includes/ppa.php). Pending rows open the decision
  * page (pages/ppa-review.php) when the page sets decisionPage; decisions are
  * enforced in includes/workflow.php.
  */
 $queueId = 'queue-table';
-$steps = ['Encoding', 'Review', 'Authorization', 'Implementation'];
+$steps = ['Encoding', 'MPDO Review', 'Budget Review', 'Final Approval', 'Implementation'];
 $rows = [];
 foreach (visiblePpas() as $ppa) {   // Encoders see only their own office
     if (in_array($ppa['status'], $queue['pending'], true)) {
@@ -30,6 +31,8 @@ sort($officesInQueue);
 $pendingCount = count(array_filter($rows, fn ($r) => $r['state'] === 'pending'));
 $processedCount = count($rows) - $pendingCount;
 $showProgress = !empty($queue['showProgress']);
+$showBudget = !empty($queue['showBudget']);
+$columns = 7 + ($showProgress ? 1 : 0) + ($showBudget ? 1 : 0);
 $canAct = !empty($queue['actPermission']) && can($queue['actPermission']);
 $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . officeName(currentUser()['office']) . ') only.';
 ?>
@@ -70,26 +73,34 @@ $scopeNote = can('scope.all_offices') ? '' : 'Showing PPAs of your office (' . o
     </div>
     <div class="table-wrap">
         <table class="activity-table">
-            <thead><tr><th>Ref #</th><th>Project Title</th><th>Implementing Office</th><th>Estimated Cost</th><?php if ($showProgress): ?><th>Progress</th><?php endif; ?><th>Status</th><th>In status</th><th data-no-export>Actions</th></tr></thead>
+            <thead><tr><th>Ref #</th><th>Project Title</th><th>Implementing Office</th><th><?= $showBudget ? 'Requested' : 'Estimated Cost' ?></th><?php if ($showBudget): ?><th>Approved budget</th><?php endif; ?><?php if ($showProgress): ?><th>Progress</th><?php endif; ?><th>Status</th><th>In status</th><th data-no-export>Actions</th></tr></thead>
             <tbody>
             <?php foreach ($rows as $ppa):
                 $days = daysInStatus($ppa);
                 $overdue = $ppa['state'] === 'pending' && $days > WORKFLOW_OVERDUE_DAYS;
                 $mine = $canAct && $ppa['state'] === 'pending' && array_filter(workflowActionsFor($ppa), fn ($a) => $a['allowed']);
-                $target = !empty($queue['decisionPage']) && $ppa['state'] === 'pending' ? 'ppa-review.php' : 'ppa-view.php';
+                $target = !empty($queue['decisionPage']) && $ppa['state'] === 'pending' ? decisionPageFor($ppa) : ($queue['rowTarget'] ?? ($showBudget ? 'budget-review.php' : 'ppa-view.php'));
+                $requestedTotal = ppaRequested($ppa)['total'];
+                $approvedBudget = ppaApprovedBudget($ppa);
+                $actionLabel = $queue['actionLabels'][$ppa['status']] ?? $queue['actionLabel'];
             ?>
                 <tr data-row data-state="<?= $ppa['state'] ?>" data-office="<?= e($ppa['office']) ?>" data-fund="<?= e($ppa['fund']) ?>" data-cost="<?= $ppa['cost'] ?>">
                     <td><a class="ref-link" href="<?= $target ?>?ref=<?= urlencode($ppa['ref']) ?>"><?= e($ppa['ref']) ?></a></td>
                     <td class="title-cell" data-export="<?= e($ppa['title']) ?>"><a class="title-link" href="<?= $target ?>?ref=<?= urlencode($ppa['ref']) ?>"><strong><?= e($ppa['title']) ?></strong></a><small class="table-subtext"><?= e($ppa['type']) ?> · <?= e(ppaFundLabel($ppa)) ?></small></td>
                     <td data-export="<?= e(officeName($ppa['office'])) ?>"><?= e($ppa['office']) ?></td>
+                    <?php if ($showBudget): ?>
+                    <td class="amount" data-export="<?= number_format($requestedTotal, 2, '.', '') ?>"><?= peso($requestedTotal) ?></td>
+                    <td class="amount" data-export="<?= $approvedBudget ? number_format($approvedBudget['total'], 2, '.', '') : '' ?>"><?php if ($approvedBudget): ?><?= peso($approvedBudget['total']) ?><?php if ($approvedBudget['total'] < $requestedTotal - 0.001): ?><small class="budget-diff down"><?= peso($approvedBudget['total'] - $requestedTotal) ?></small><?php endif; ?><?php else: ?><span class="table-subtext">Pending</span><?php endif; ?></td>
+                    <?php else: ?>
                     <td class="amount" data-export="<?= number_format($ppa['cost'], 2, '.', '') ?>"><?= peso($ppa['cost']) ?></td>
+                    <?php endif; ?>
                     <?php if ($showProgress): ?><td data-export="<?= $ppa['progress'] ?>%"><div class="table-progress"><div class="progress-track"><span style="width:<?= (int) $ppa['progress'] ?>%"></span></div><b><?= (int) $ppa['progress'] ?>%</b></div></td><?php endif; ?>
                     <td><?= statusPill($ppa['status']) ?></td>
                     <td data-export="<?= $days ?> days"><span class="<?= $overdue ? 'overdue-text' : 'table-subtext' ?>"><?= e(waitingLabel($days)) ?><?= $overdue ? ' · overdue' : '' ?></span></td>
-                    <td><a class="review-action <?= $mine ? '' : 'quiet' ?>" href="<?= $target ?>?ref=<?= urlencode($ppa['ref']) ?>"><?= e($mine ? $queue['actionLabel'] : 'View') ?></a></td>
+                    <td><a class="review-action <?= $mine || isset($queue['rowTarget']) ? '' : 'quiet' ?>" href="<?= $target ?>?ref=<?= urlencode($ppa['ref']) ?>"><?= e($mine || isset($queue['rowTarget']) ? $actionLabel : 'View') ?></a></td>
                 </tr>
             <?php endforeach; ?>
-                <tr data-empty hidden><td class="empty-cell" colspan="<?= $showProgress ? 8 : 7 ?>">No records match the current view or filters.</td></tr>
+                <tr data-empty hidden><td class="empty-cell" colspan="<?= $columns ?>">No records match the current view or filters.</td></tr>
             </tbody>
         </table>
     </div>

@@ -10,11 +10,12 @@ const DASHBOARD_STAGES = [
     'draft'       => ['label' => 'Draft',                 'link' => 'pages/ppas.php'],
     'for_review'  => ['label' => 'Pending review',        'link' => 'pages/review-workflow.php'],
     'returned'    => ['label' => 'Returned for revision', 'link' => 'pages/review-workflow.php'],
-    'recommended' => ['label' => 'Pending authorization', 'link' => 'pages/authorization-workflow.php'],
+    'for_budget'  => ['label' => 'Budget review',         'link' => 'pages/budget-workflow.php'],
+    'recommended' => ['label' => 'For final approval',    'link' => 'pages/review-workflow.php'],
     'approved'    => ['label' => 'Approved',              'link' => 'pages/implementation-workflow.php'],
     'ongoing'     => ['label' => 'Ongoing',               'link' => 'pages/implementation-workflow.php'],
     'completed'   => ['label' => 'Completed',             'link' => 'pages/implementation-workflow.php'],
-    'disapproved' => ['label' => 'Disapproved',           'link' => 'pages/authorization-workflow.php'],
+    'disapproved' => ['label' => 'Disapproved',           'link' => 'pages/review-workflow.php'],
 ];
 
 /**
@@ -76,7 +77,7 @@ function dashboardData(array $filters = []): array
         $pipeline[$status] = $stage + ['count' => count($items), 'amount' => array_sum(array_column($items, 'cost'))];
     }
 
-    $pending = $in(['for_review', 'recommended', 'returned']);
+    $pending = $in(WORKFLOW_PENDING_STATUSES);
     $overdue = array_values(array_filter($pending, fn ($p) => daysInStatus($p) > WORKFLOW_OVERDUE_DAYS));
     usort($pending, fn ($a, $b) => strcmp(statusSince($a), statusSince($b)));
     $approved = $in(['approved', 'ongoing', 'completed']);
@@ -137,6 +138,19 @@ function dashboardData(array $filters = []): array
                               'link' => 'pages/aip-consolidation.php'];
     }
 
+    if (can('budget.view')) {
+        $requested = array_sum(array_map(fn ($p) => ppaRequested($p)['total'], $approved));
+        $approvedTotal = array_sum(array_column($approved, 'cost'));
+        $compliance['budget'] = ['label' => 'Approved vs requested budget', 'value' => $requested > 0 ? number_format($approvedTotal / $requested * 100, 1) . '%' : '—', 'errors' => 0,
+                                 'detail' => pesoShort($approvedTotal) . ' approved of ' . pesoShort($requested) . ' requested', 'link' => 'pages/fund-monitoring.php?tab=budget'];
+    }
+    if (can('expenses.view')) {
+        $xs = array_filter(visibleExpenses(), fn ($x) => (empty($filters['office']) || $x['ppa']['office'] === $filters['office']) && (empty($filters['sector']) || $x['ppa']['sector'] === $filters['sector']));
+        $xc = expenseAuditCounts($xs);
+        $compliance['expenses'] = ['label' => 'Expenses not yet audited', 'value' => $xc['unverified'], 'errors' => $xc['flagged'],
+                                   'detail' => $xc['flagged'] . ' flagged · ' . $xc['verified'] . ' verified', 'link' => 'pages/expenditures.php'];
+    }
+
     // Administrator: account activity today
     $accounts = null;
     if (can('users.manage')) {
@@ -167,7 +181,9 @@ function dashboardData(array $filters = []): array
         'decided'       => $decided,
         'approvalRate'  => $decided ? count($approved) / $decided * 100 : null,
         'reviewTime'    => dashboardTurnaround($ppas, 'for_review'),
+        'budgetTime'    => dashboardTurnaround($ppas, 'for_budget'),
         'authTime'      => dashboardTurnaround($ppas, 'recommended'),
+        'requestedCost' => array_sum(array_map(fn ($p) => ppaRequested($p)['total'], $approved)),
         'implementing'  => $implementing,
         'avgProgress'   => $implementing ? array_sum(array_column($implementing, 'progress')) / count($implementing) : null,
         'utilized'      => array_sum(array_map(fn ($p) => (float) $p['utilized'], $implementing)),

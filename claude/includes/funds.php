@@ -15,7 +15,7 @@ function fundCategories(): array
 
 /** PPA statuses whose allocations count as programmed (approved) or pending. */
 const FUND_PROGRAMMED_STATUSES = ['approved', 'ongoing', 'completed'];
-const FUND_PENDING_STATUSES = ['for_review', 'recommended', 'returned'];
+const FUND_PENDING_STATUSES = ['for_review', 'for_budget', 'recommended', 'returned'];
 
 /* ---------------- Store access ---------------- */
 
@@ -185,7 +185,7 @@ function fundingIssues(): array
         if (abs($diff) >= 0.01) {
             $issues[] = ['level' => 'error', 'type' => $diff > 0 ? 'Under-allocated' : 'Over-allocated', 'ref' => $ppa['ref'], 'fund' => '',
                          'message' => 'Allocations total ' . peso($allocated) . ' but the PPA costs ' . peso($ppa['cost'])
-                                    . ' (' . ($diff > 0 ? peso($diff) . ' unfunded' : peso(-$diff) . ' too much') . ').'];
+                                    . ' (' . ($diff > 0 ? peso($diff) . ' unutilized' : peso(-$diff) . ' too much') . ').'];
         }
         foreach ($allocations as $key => $amount) {
             if (!isset($funds[$key])) {

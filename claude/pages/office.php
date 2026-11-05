@@ -38,7 +38,7 @@ include '../includes/header.php';
 </div>
 
 <section class="stat-grid four">
-    <article class="stat-card"><div class="stat-top"><span class="stat-label">PPAs</span><span class="stat-icon blue">▤</span></div><strong><?= count($o['ppas']) ?></strong><p><?= count($o['approved']) ?> approved · <?= ($byStatus['for_review'] ?? 0) + ($byStatus['recommended'] ?? 0) ?> in process · <?= $byStatus['returned'] ?? 0 ?> returned</p></article>
+    <article class="stat-card"><div class="stat-top"><span class="stat-label">PPAs</span><span class="stat-icon blue">▤</span></div><strong><?= count($o['ppas']) ?></strong><p><?= count($o['approved']) ?> approved · <?= ($byStatus['for_review'] ?? 0) + ($byStatus['for_budget'] ?? 0) + ($byStatus['recommended'] ?? 0) ?> in process · <?= $byStatus['returned'] ?? 0 ?> returned</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Proposed cost</span><span class="stat-icon green">₱</span></div><strong><?= pesoShort($o['cost']) ?></strong><p>Excluding disapproved PPAs</p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Fund sources used</span><span class="stat-icon amber">▥</span></div><strong><?= count($o['funds']) ?></strong><p><?= e(implode(', ', array_map('fundName', array_keys($o['funds'])))) ?: '—' ?></p></article>
     <article class="stat-card"><div class="stat-top"><span class="stat-label">Approval records</span><span class="stat-icon blue">▣</span></div><strong><?= count($o['records']) ?></strong><p><?= count(array_filter($o['approved'], fn ($p) => !ppaApprovalRecords($p['ref']))) ?> approved PPA(s) without a record</p></article>
