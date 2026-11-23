@@ -3,20 +3,15 @@
  * PPA (Program / Project / Activity) records: standardized fields,
  * storage, validation and status rules.
  *
- * MOCK STORE: records live in the session store (see includes/store.php)
- * until the database phase, when these functions are reimplemented with
- * prepared statements against a `ppas` table (plus `ppa_history`).
+ * Storage: MySQL tables `ppas`, `ppa_history`, `ppa_budgets`,
+ * `ppa_fund_allocations` and `ppa_review_checklist`. PPAs are returned as
+ * arrays keyed by the same field names the pages use (ref, title, office ...).
  */
 
 /** Development sectors used in the AIP form. */
 function ppaSectors(): array
 {
-    return [
-        'GPS' => 'General Public Services',
-        'SS'  => 'Social Services',
-        'ES'  => 'Economic Services',
-        'OS'  => 'Other Services',
-    ];
+    return dbCached('sectors', fn () => array_column(dbAll('SELECT code, name FROM sectors ORDER BY sort_order, code'), 'name', 'code'));
 }
 
 /**
@@ -51,139 +46,245 @@ const PPA_FIELDS = [
     'cc_typology'     => 'CC typology code',
 ];
 
-/** MOCK: turn the sample PPAs into full records for the store. */
-function ppaSeedRecords(): array
-{
-    $sectorByOffice = ['MEO' => 'ES', 'MHO' => 'SS', 'MSWDO' => 'SS', 'MAO' => 'ES', 'MDRRMO' => 'SS', 'MENRO' => 'OS', 'MPDO' => 'GPS'];
-    $records = [];
-    foreach (mockPpas() as $ppa) {
-        $isProject = $ppa['type'] === 'Project';
-        $decided = in_array($ppa['status'], ['approved', 'ongoing', 'completed'], true);
-        $climate = $decided && in_array($ppa['office'], ['MDRRMO', 'MENRO'], true);
-        $record = $ppa + [
-            'sector'          => $sectorByOffice[$ppa['office']] ?? 'GPS',
-            'description'     => 'Sample description for ' . $ppa['title'] . '.',
-            'expected_output' => $isProject ? 'Completed facility turned over to the implementing office.' : 'Activity conducted for target beneficiaries.',
-            'ps'              => 0,
-            'mooe'            => $isProject ? 0 : $ppa['cost'],
-            'co'              => $isProject ? $ppa['cost'] : 0,
-            // Climate change expenditure is only entered at final approval.
-            'cc_adaptation'   => $climate ? round($ppa['cost'] * 0.5, 2) : 0,
-            'cc_mitigation'   => 0,
-            'cc_typology'     => $climate ? 'A612-01' : '',
-            'remarks'         => '',
-            'created_by'      => 'System (sample data)',
-            'created_at'      => $ppa['updated'] . ' 08:00:00',
-            'updated_by'      => 'System (sample data)',
-            'updated_at'      => $ppa['updated'] . ' 08:00:00',
-            'submitted_at'    => $ppa['updated'] . ' 08:00:00',
-            'history'         => [['time' => $ppa['updated'] . ' 08:00:00', 'status' => $ppa['status'], 'action' => 'Sample record loaded', 'by' => 'System (sample data)', 'remarks' => '']],
-        ];
-        if ($ppa['ref'] === 'PPA-' . AIP_FISCAL_YEAR . '-013') {
-            // MOCK: a split allocation that does not add up, to demonstrate the funding checks.
-            $record['allocations'] = ['GF' => 2000000, 'TF' => 400000];
-        }
-        // MOCK: Finance budget decisions for PPAs past budget review. Two were approved
-        // below the requested amount to demonstrate the requested vs approved comparison.
-        if (in_array($ppa['status'], ['recommended', 'approved', 'ongoing', 'completed'], true)) {
-            $requested = ['ps' => $record['ps'], 'mooe' => $record['mooe'], 'co' => $record['co']];
-            $cut = ['PPA-' . AIP_FISCAL_YEAR . '-006' => 300000, 'PPA-' . AIP_FISCAL_YEAR . '-011' => 300000][$ppa['ref']] ?? 0;
-            $requested[$isProject ? 'co' : 'mooe'] += $cut;
-            $record['budget'] = [
-                'requested' => $requested,
-                'approved'  => ['ps' => $record['ps'], 'mooe' => $record['mooe'], 'co' => $record['co']],
-                'by'        => 'Teresa Navarro (tnavarro)',
-                'by_id'     => 8,
-                'at'        => $ppa['updated'] . ' 10:00:00',
-                'remarks'   => $cut ? 'Approved at a lower amount based on the updated cost estimate.' : '',
-            ];
-        }
-        if ($ppa['status'] === 'returned') {
-            $record['remarks'] = 'Please indicate the exact site and number of barangays served, and break down the cost into MOOE and Capital Outlay.';
-            $record['history'][] = ['time' => $ppa['updated'] . ' 15:30:00', 'status' => 'returned', 'action' => 'Returned for revision', 'by' => 'Jose Bautista (jbautista)', 'remarks' => $record['remarks']];
-        }
-        $records[$ppa['ref']] = $record;
-    }
-    return $records;
-}
-
 /* ---------------- Store access ---------------- */
 
-/** Make sure PPAs are in the store (also upgrades sessions created before PPAs were stored). */
+/** Kept for older callers; the database needs no initialisation. */
 function ppaStoreInit(): void
 {
-    storeInit();
-    if (!isset($_SESSION['mock_store']['ppas'])) {
-        $_SESSION['mock_store']['ppas'] = ppaSeedRecords();
-    }
+}
+
+/** Build the PPA arrays the pages use from the database rows. */
+function ppaLoadAll(): array
+{
+    return dbCached('ppas', function () {
+        $rows = dbAll("SELECT p.*,
+                   c.full_name AS c_name, c.username AS c_user,
+                   u.full_name AS u_name, u.username AS u_user,
+                   f.full_name AS f_name, f.username AS f_user,
+                   d.full_name AS d_name, d.username AS d_user
+            FROM ppas p
+            LEFT JOIN users c ON c.id = p.created_by
+            LEFT JOIN users u ON u.id = p.updated_by
+            LEFT JOIN users f ON f.id = p.forwarded_by
+            LEFT JOIN users d ON d.id = p.decided_by
+            ORDER BY p.ref DESC");
+        $byId = [];
+        foreach ($rows as $r) {
+            $byId[(int) $r['id']] = [
+                'id'                  => (int) $r['id'],
+                'ref'                 => $r['ref'],
+                'fiscal_year'         => (int) $r['fiscal_year'],
+                'title'               => $r['title'],
+                'type'                => (string) $r['ppa_type'],
+                'program'             => $r['program'],
+                'sector'              => (string) $r['sector_code'],
+                'description'         => (string) $r['description'],
+                'expected_output'     => (string) $r['expected_output'],
+                'office'              => $r['office_code'],
+                'start'               => (string) $r['start_date'],
+                'end'                 => (string) $r['end_date'],
+                'ps'                  => (float) $r['ps'],
+                'mooe'                => (float) $r['mooe'],
+                'co'                  => (float) $r['co'],
+                'cost'                => (float) $r['total_cost'],
+                'fund'                => (string) $r['fund_code'],
+                'cc_adaptation'       => (float) $r['cc_adaptation'],
+                'cc_mitigation'       => (float) $r['cc_mitigation'],
+                'cc_typology'         => (string) $r['cc_typology'],
+                'status'              => $r['status'],
+                'progress'            => (int) $r['progress'],
+                'utilized'            => 0.0,
+                'remarks'             => (string) $r['remarks'],
+                'officer'             => (string) $r['c_name'],
+                'created_by'          => dbActorLabel($r['c_name'], $r['c_user']) ?: 'System',
+                'created_by_id'       => $r['created_by'] === null ? null : (int) $r['created_by'],
+                'created_at'          => $r['created_at'],
+                'updated_by'          => dbActorLabel($r['u_name'], $r['u_user']) ?: 'System',
+                'updated_at'          => $r['updated_at'],
+                'updated'             => substr($r['updated_at'], 0, 10),
+                'submitted_at'        => (string) $r['submitted_at'],
+                'edited_in_review_at' => (string) $r['edited_in_review_at'],
+                'recommended_by'      => dbActorLabel($r['f_name'], $r['f_user']),
+                'recommended_by_id'   => $r['forwarded_by'] === null ? null : (int) $r['forwarded_by'],
+                'recommended_at'      => (string) $r['forwarded_at'],
+                'decided_by'          => dbActorLabel($r['d_name'], $r['d_user']),
+                'decided_at'          => (string) $r['decided_at'],
+                'decision_remarks'    => (string) $r['decision_remarks'],
+                'allocations'         => [],
+                'budget'              => null,
+                'checklist'           => [],
+                'history'             => [],
+                'record'              => '',
+                'recordDate'          => '',
+            ];
+        }
+        if (!$byId) {
+            return [];
+        }
+        foreach (dbAll('SELECT ppa_id, fund_code, amount FROM ppa_fund_allocations ORDER BY fund_code') as $a) {
+            $byId[(int) $a['ppa_id']]['allocations'][$a['fund_code']] = (float) $a['amount'];
+        }
+        foreach ($byId as &$ppa) {
+            if (count($ppa['allocations']) <= 1) {
+                $ppa['allocations'] = [];   // not split: charged entirely to the primary fund
+            }
+        }
+        unset($ppa);
+        foreach (dbAll('SELECT b.*, u.full_name, u.username FROM ppa_budgets b LEFT JOIN users u ON u.id = b.decided_by') as $b) {
+            $budget = ['requested' => ['ps' => (float) $b['requested_ps'], 'mooe' => (float) $b['requested_mooe'], 'co' => (float) $b['requested_co']]];
+            if ($b['approved_ps'] !== null) {
+                $budget += [
+                    'approved' => ['ps' => (float) $b['approved_ps'], 'mooe' => (float) $b['approved_mooe'], 'co' => (float) $b['approved_co']],
+                    'by'       => dbActorLabel($b['full_name'], $b['username']),
+                    'by_id'    => $b['decided_by'] === null ? null : (int) $b['decided_by'],
+                    'at'       => (string) $b['decided_at'],
+                    'remarks'  => (string) $b['remarks'],
+                ];
+            }
+            $byId[(int) $b['ppa_id']]['budget'] = $budget;
+        }
+        foreach (dbAll('SELECT ppa_id, item_key FROM ppa_review_checklist') as $c) {
+            $byId[(int) $c['ppa_id']]['checklist'][] = $c['item_key'];
+        }
+        foreach (dbAll('SELECT ppa_id, action, status, remarks, actor_name, created_at FROM ppa_history ORDER BY created_at, id') as $h) {
+            $byId[(int) $h['ppa_id']]['history'][] = ['time' => $h['created_at'], 'status' => $h['status'], 'action' => $h['action'],
+                                                    'by' => $h['actor_name'], 'remarks' => (string) $h['remarks']];
+        }
+        // The PPA's approval record shown in lists and the AIP: its earliest linked record.
+        foreach (dbAll('SELECT l.ppa_id, r.record_no, r.record_date FROM ppa_approval_records l
+                        JOIN approval_records r ON r.id = l.approval_record_id ORDER BY r.record_date DESC, r.id DESC') as $l) {
+            $byId[(int) $l['ppa_id']]['record'] = $l['record_no'];
+            $byId[(int) $l['ppa_id']]['recordDate'] = $l['record_date'];
+        }
+        foreach (dbAll('SELECT ppa_id, SUM(amount) AS spent FROM ppa_expenses GROUP BY ppa_id') as $x) {
+            $byId[(int) $x['ppa_id']]['utilized'] = round((float) $x['spent'], 2);
+        }
+        $byRef = [];
+        foreach ($byId as $ppa) {
+            $byRef[$ppa['ref']] = $ppa;
+        }
+        return $byRef;
+    });
 }
 
 /** All PPAs, newest reference first. */
 function storePpas(): array
 {
-    ppaStoreInit();
-    $ppas = array_values($_SESSION['mock_store']['ppas']);
-    usort($ppas, fn ($a, $b) => strcmp($b['ref'], $a['ref']));
-    return $ppas;
+    return array_values(ppaLoadAll());
 }
 
 function storeFindPpa(string $ref): ?array
 {
-    ppaStoreInit();
-    return $_SESSION['mock_store']['ppas'][$ref] ?? null;
+    return ppaLoadAll()[$ref] ?? null;
+}
+
+/** Database id of a PPA reference (or null). */
+function ppaId(string $ref): ?int
+{
+    $id = ppaLoadAll()[$ref]['id'] ?? dbValue('SELECT id FROM ppas WHERE ref = ?', [$ref]);
+    return $id === null ? null : (int) $id;
 }
 
 /** Next reference number for the current AIP year, e.g. PPA-2027-015. */
 function nextPpaRef(): string
 {
-    ppaStoreInit();
     $prefix = 'PPA-' . AIP_FISCAL_YEAR . '-';
-    $max = 0;
-    foreach (array_keys($_SESSION['mock_store']['ppas']) as $ref) {
-        if (str_starts_with($ref, $prefix)) {
-            $max = max($max, (int) substr($ref, strlen($prefix)));
-        }
-    }
+    $max = (int) dbValue('SELECT COALESCE(MAX(CAST(SUBSTRING(ref, ?) AS UNSIGNED)), 0) FROM ppas WHERE ref LIKE ?',
+        [strlen($prefix) + 1, $prefix . '%']);
     return $prefix . str_pad((string) ($max + 1), 3, '0', STR_PAD_LEFT);
 }
 
+/** Array keys used by the pages => columns of the ppas table. */
+const PPA_COLUMNS = [
+    'title' => 'title', 'type' => 'ppa_type', 'program' => 'program', 'sector' => 'sector_code', 'description' => 'description',
+    'expected_output' => 'expected_output', 'office' => 'office_code', 'start' => 'start_date', 'end' => 'end_date',
+    'ps' => 'ps', 'mooe' => 'mooe', 'co' => 'co', 'fund' => 'fund_code', 'cc_adaptation' => 'cc_adaptation',
+    'cc_mitigation' => 'cc_mitigation', 'cc_typology' => 'cc_typology', 'status' => 'status', 'progress' => 'progress',
+    'remarks' => 'remarks', 'submitted_at' => 'submitted_at', 'edited_in_review_at' => 'edited_in_review_at',
+    'recommended_by_id' => 'forwarded_by', 'recommended_at' => 'forwarded_at', 'decided_at' => 'decided_at',
+    'decision_remarks' => 'decision_remarks',
+];
+/** Columns where an empty value is stored as NULL. */
+const PPA_NULLABLE = ['ppa_type', 'sector_code', 'start_date', 'end_date', 'fund_code', 'cc_typology', 'submitted_at',
+                      'edited_in_review_at', 'forwarded_by', 'forwarded_at', 'decided_at'];
+
 /**
  * Insert (no ref) or update a PPA and append a history entry.
- * Returns the saved record.
+ * Only the keys present in $data change. Returns the saved record.
  */
 function storeSavePpa(array $data, string $historyAction, string $remarks = ''): array
 {
-    ppaStoreInit();
-    $actor = currentUser();
-    $actorName = $actor ? $actor['name'] . ' (' . $actor['username'] . ')' : 'System';
-    $now = date('Y-m-d H:i:s');
+    [$actorId, $actorName] = dbActor();
+    $ref = dbTransaction(function () use ($data, $historyAction, $remarks, $actorId, $actorName) {
+        $values = [];
+        foreach (PPA_COLUMNS as $key => $column) {
+            if (array_key_exists($key, $data)) {
+                $value = $data[$key];
+                $values[$column] = in_array($column, PPA_NULLABLE, true) ? dbNull($value) : ($value ?? '');
+            }
+        }
+        if (array_key_exists('decided_by', $data)) {
+            $values['decided_by'] = $data['decided_by'] === '' ? null : $actorId;
+        }
+        $values['updated_by'] = $actorId;
 
-    if (empty($data['ref'])) {
-        $data['ref'] = nextPpaRef();
-        $data += ['created_by' => $actorName, 'created_by_id' => $actor['id'] ?? null, 'created_at' => $now, 'history' => [], 'remarks' => '', 'progress' => 0, 'utilized' => 0,
-                  'record' => '', 'recordDate' => '', 'officer' => $actor['name'] ?? '', 'submitted_at' => '',
-                  'cc_adaptation' => 0, 'cc_mitigation' => 0, 'cc_typology' => '', 'budget' => null];
-    }
-    $existing = $_SESSION['mock_store']['ppas'][$data['ref']] ?? [];
-    $record = array_merge($existing, $data);
-    $record['cost'] = ppaTotal($record);
-    // A PPA that is not split across funds is charged entirely to its primary fund,
-    // so its allocation follows the primary fund and cost automatically.
-    if (count($record['allocations'] ?? []) <= 1) {
-        $record['allocations'] = [];
-    }
-    $record['updated_by'] = $actorName;
-    $record['updated_at'] = $now;
-    $record['updated'] = date('Y-m-d');
-    $record['history'][] = ['time' => $now, 'status' => $record['status'], 'action' => $historyAction, 'by' => $actorName, 'remarks' => $remarks];
-    $_SESSION['mock_store']['ppas'][$record['ref']] = $record;
-    return $record;
+        if (empty($data['ref'])) {
+            $ref = nextPpaRef();
+            $values += ['ref' => $ref, 'fiscal_year' => AIP_FISCAL_YEAR, 'created_by' => $actorId];
+            $columns = array_keys($values);
+            dbExec('INSERT INTO ppas (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
+                array_values($values));
+            $id = (int) db()->lastInsertId();
+        } else {
+            $ref = $data['ref'];
+            $id = ppaId($ref);
+            if ($id === null) {
+                throw new RuntimeException('PPA ' . $ref . ' does not exist.');
+            }
+            $sets = implode(', ', array_map(fn ($c) => "$c = ?", array_keys($values)));
+            dbExec("UPDATE ppas SET $sets WHERE id = ?", [...array_values($values), $id]);
+        }
+
+        // A PPA that is not split across funds is charged entirely to its primary fund,
+        // so only real splits (two or more funds) are stored as allocation rows.
+        if (array_key_exists('allocations', $data)) {
+            dbExec('DELETE FROM ppa_fund_allocations WHERE ppa_id = ?', [$id]);
+            if (count($data['allocations'] ?? []) > 1) {
+                foreach ($data['allocations'] as $fund => $amount) {
+                    dbExec('INSERT INTO ppa_fund_allocations (ppa_id, fund_code, amount) VALUES (?, ?, ?)', [$id, $fund, $amount]);
+                }
+            }
+        }
+        if (array_key_exists('budget', $data)) {
+            dbExec('DELETE FROM ppa_budgets WHERE ppa_id = ?', [$id]);
+            $b = $data['budget'];
+            if ($b) {
+                $a = $b['approved'] ?? null;
+                dbExec('INSERT INTO ppa_budgets (ppa_id, requested_ps, requested_mooe, requested_co, approved_ps, approved_mooe, approved_co, decided_by, decided_at, remarks)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+                    $id, $b['requested']['ps'], $b['requested']['mooe'], $b['requested']['co'],
+                    $a['ps'] ?? null, $a['mooe'] ?? null, $a['co'] ?? null,
+                    $a ? ($b['by_id'] ?? $actorId) : null, $a ? dbNull($b['at'] ?? '') : null, $a ? dbNull($b['remarks'] ?? '') : null,
+                ]);
+            }
+        }
+        if (array_key_exists('checklist', $data)) {
+            dbExec('DELETE FROM ppa_review_checklist WHERE ppa_id = ?', [$id]);
+            foreach (array_unique((array) $data['checklist']) as $item) {
+                dbExec('INSERT INTO ppa_review_checklist (ppa_id, item_key, checked_by) VALUES (?, ?, ?)', [$id, $item, $actorId]);
+            }
+        }
+        $status = $values['status'] ?? dbValue('SELECT status FROM ppas WHERE id = ?', [$id]);
+        dbExec('INSERT INTO ppa_history (ppa_id, action, status, remarks, user_id, actor_name) VALUES (?, ?, ?, ?, ?, ?)',
+            [$id, mb_substr($historyAction, 0, 200), $status, dbNull($remarks), $actorId, $actorName]);
+        return $ref;
+    });
+    return storeFindPpa($ref);
 }
 
 function storeDeletePpa(string $ref): void
 {
-    ppaStoreInit();
-    unset($_SESSION['mock_store']['ppas'][$ref]);
+    dbExec('DELETE FROM ppas WHERE ref = ?', [$ref]);
 }
 
 /* ---------------- Rules ---------------- */
@@ -299,7 +400,7 @@ function validatePpa(array $input, bool $isDraft, array $offices, ?string $curre
     }
 
     $choices = [
-        'type'   => mockPpaTypes(),
+        'type'   => ppaTypes(),
         'sector' => array_keys(ppaSectors()),
         'office' => array_keys($offices),
         'fund'   => array_keys(activeFundSources()),

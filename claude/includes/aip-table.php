@@ -17,7 +17,7 @@ $colspanDesc = 6;
     <p><strong>MUNICIPALITY OF INDANG</strong></p>
     <h2>ANNUAL INVESTMENT PROGRAM (AIP)</h2>
     <p>CY <?= AIP_FISCAL_YEAR ?> · By Program/Project/Activity by Sector</p>
-    <p class="aip-print-caption"><?= e($aipCaption) ?> · Development version: sample data</p>
+    <p class="aip-print-caption"><?= e($aipCaption) ?></p>
 </div>
 <div class="table-wrap aip-form-wrap">
     <table class="aip-form">

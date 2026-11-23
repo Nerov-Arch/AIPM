@@ -120,7 +120,7 @@ include '../includes/header.php';
     </div>
     <form class="filter-bar no-print" method="get">
         <label>Sector<select name="sector"><option value="">All sectors</option><?php foreach (ppaSectors() as $code => $name): ?><option value="<?= e($code) ?>" <?= $filters['sector'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
-        <label>Implementing office<select name="office"><option value="">All offices</option><?php foreach (mockOffices() as $code => $name): ?><option value="<?= e($code) ?>" <?= $filters['office'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
+        <label>Implementing office<select name="office"><option value="">All offices</option><?php foreach (officeList() as $code => $name): ?><option value="<?= e($code) ?>" <?= $filters['office'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
         <label>Fund source<select name="fund"><option value="">All sources</option><?php foreach (fundSources() as $code => $fund): ?><option value="<?= e($code) ?>" <?= $filters['fund'] === $code ? 'selected' : '' ?>><?= e($fund['name']) ?></option><?php endforeach; ?></select></label>
         <?php if ($thousands): ?><input type="hidden" name="units" value="thousands"><?php endif; ?>
         <button class="secondary-button" type="submit">Apply</button>

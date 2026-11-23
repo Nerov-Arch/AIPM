@@ -13,7 +13,7 @@ requireLogin($assetPrefix);
 requirePermission($requiredPermission, $assetPrefix);
 
 $code = (string) ($_GET['code'] ?? '');
-$offices = mockOffices();
+$offices = officeList();
 if (!isset($offices[$code]) || !canSeeOffice($code)) {
     flash('error', 'That office was not found or you do not have access to it.');
     header('Location: project-linking.php?tab=offices');

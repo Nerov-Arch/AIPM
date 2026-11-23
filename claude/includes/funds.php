@@ -2,9 +2,8 @@
 /**
  * Fund sources, PPA fund allocations, per-fund totals and funding checks.
  *
- * MOCK STORE: fund sources live in the session store until the database
- * phase, when they become a `fund_sources` table and each PPA's allocation
- * becomes rows in `ppa_fund_allocations` (ppa_id, fund_source_id, amount).
+ * Storage: MySQL tables `fund_sources` and `fund_source_ceilings` (ceiling per
+ * fiscal year); PPA splits are rows in `ppa_fund_allocations` (see ppa.php).
  */
 
 /** Fund source categories. */
@@ -19,25 +18,40 @@ const FUND_PENDING_STATUSES = ['for_review', 'for_budget', 'recommended', 'retur
 
 /* ---------------- Store access ---------------- */
 
+/** Kept for older callers; the database needs no initialisation. */
 function fundStoreInit(): void
 {
-    storeInit();
-    if (!isset($_SESSION['mock_store']['funds'])) {
-        $now = date('Y-m-d H:i:s');
-        $funds = [];
-        foreach (mockFundSources() as $key => $fund) {
-            $funds[$key] = $fund + ['key' => $key, 'created_by' => 'System (sample data)', 'created_at' => $now,
-                                    'updated_by' => 'System (sample data)', 'updated_at' => $now];
-        }
-        $_SESSION['mock_store']['funds'] = $funds;
-    }
 }
 
-/** All fund sources keyed by short code (e.g. DF). */
+/** All fund sources keyed by short code (e.g. DF), with the ceiling for the AIP year. */
 function fundSources(): array
 {
-    fundStoreInit();
-    return $_SESSION['mock_store']['funds'];
+    return dbCached('funds', function () {
+        $rows = dbAll('SELECT f.*, COALESCE(c.ceiling, 0) AS ceiling,
+                              cu.full_name AS c_name, cu.username AS c_user, uu.full_name AS u_name, uu.username AS u_user
+                       FROM fund_sources f
+                       LEFT JOIN fund_source_ceilings c ON c.fund_code = f.code AND c.fiscal_year = ?
+                       LEFT JOIN users cu ON cu.id = f.created_by
+                       LEFT JOIN users uu ON uu.id = f.updated_by
+                       ORDER BY f.created_at, f.code', [AIP_FISCAL_YEAR]);
+        $funds = [];
+        foreach ($rows as $r) {
+            $funds[$r['code']] = [
+                'key'         => $r['code'],
+                'name'        => $r['name'],
+                'code'        => $r['account_code'],
+                'category'    => $r['category'],
+                'ceiling'     => (float) $r['ceiling'],
+                'active'      => (bool) $r['is_active'],
+                'description' => $r['description'],
+                'created_by'  => dbActorLabel($r['c_name'], $r['c_user']) ?: 'System',
+                'created_at'  => $r['created_at'],
+                'updated_by'  => dbActorLabel($r['u_name'], $r['u_user']) ?: 'System',
+                'updated_at'  => $r['updated_at'],
+            ];
+        }
+        return $funds;
+    });
 }
 
 /** Fund sources that may be chosen for new allocations. */
@@ -51,22 +65,40 @@ function storeFindFund(string $key): ?array
     return fundSources()[$key] ?? null;
 }
 
+/** Insert or update a fund source (only the keys given change) and its ceiling for the AIP year. */
 function storeSaveFund(array $fund): array
 {
-    fundStoreInit();
-    $actor = currentUser();
-    $actorName = $actor ? $actor['name'] . ' (' . $actor['username'] . ')' : 'System';
-    $now = date('Y-m-d H:i:s');
-    $existing = $_SESSION['mock_store']['funds'][$fund['key']] ?? ['created_by' => $actorName, 'created_at' => $now];
-    $record = array_merge($existing, $fund, ['updated_by' => $actorName, 'updated_at' => $now]);
-    $_SESSION['mock_store']['funds'][$fund['key']] = $record;
-    return $record;
+    [$actorId] = dbActor();
+    dbTransaction(function () use ($fund, $actorId) {
+        $map = ['name' => 'name', 'code' => 'account_code', 'category' => 'category', 'description' => 'description', 'active' => 'is_active'];
+        $values = [];
+        foreach ($map as $key => $column) {
+            if (array_key_exists($key, $fund)) {
+                $values[$column] = $key === 'active' ? (int) (bool) $fund[$key] : $fund[$key];
+            }
+        }
+        if (storeFindFund($fund['key'])) {
+            $values['updated_by'] = $actorId;
+            $sets = implode(', ', array_map(fn ($c) => "$c = ?", array_keys($values)));
+            dbExec("UPDATE fund_sources SET $sets WHERE code = ?", [...array_values($values), $fund['key']]);
+        } else {
+            $values += ['code' => $fund['key'], 'created_by' => $actorId, 'updated_by' => $actorId];
+            $columns = array_keys($values);
+            dbExec('INSERT INTO fund_sources (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
+                array_values($values));
+        }
+        if (array_key_exists('ceiling', $fund)) {
+            dbExec('INSERT INTO fund_source_ceilings (fund_code, fiscal_year, ceiling) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE ceiling = VALUES(ceiling)', [$fund['key'], AIP_FISCAL_YEAR, $fund['ceiling']]);
+        }
+    });
+    return storeFindFund($fund['key']);
 }
 
+/** Delete a fund source (the page only allows this when no PPA uses it). */
 function storeDeleteFund(string $key): void
 {
-    fundStoreInit();
-    unset($_SESSION['mock_store']['funds'][$key]);
+    dbExec('DELETE FROM fund_sources WHERE code = ?', [$key]);
 }
 
 /* ---------------- Allocations ---------------- */

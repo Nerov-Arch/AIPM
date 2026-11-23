@@ -1,61 +1,55 @@
 <?php
 /**
- * ============================================================
- * MOCK STORE: DEVELOPMENT VERSION ONLY
- * ============================================================
- * Keeps user accounts and the activity log in the PHP session so the
- * User Management module can be fully exercised without a database.
- *
- * - Data survives sign-out and switching between test accounts in the
- *   same browser, but is lost when the browser session ends or expires.
- * - It is NOT shared between browsers or computers.
- * - In the database phase each function below is reimplemented with
- *   prepared statements (tables: users, audit_logs). Callers stay the same.
- * ============================================================
+ * User accounts and the activity log, stored in MySQL (tables `users`, `audit_log`).
+ * Records are returned as arrays in the same shape the pages have always used:
+ *   id, username, name, email, role, office, position, status, password_hash,
+ *   must_change, last_login, created_at, created_by, updated_at, updated_by
  */
 
 const AUDIT_LOG_LIMIT = 500;
 
-/**
- * Bumped whenever the shape of the sample data changes, so a browser that
- * still holds an older session store starts again from the new sample data.
- */
-const MOCK_STORE_VERSION = 2;
-
-/** Create the store from the mock data on first use. */
+/** Kept for older callers; the database needs no initialisation per request. */
 function storeInit(): void
 {
-    if (isset($_SESSION['mock_store']) && ($_SESSION['mock_store']['version'] ?? 1) === MOCK_STORE_VERSION) {
-        return;
-    }
-    unset($_SESSION['user_id'], $_SESSION['otp_pending']);
-    $now = date('Y-m-d H:i:s');
-    $hash = password_hash(MOCK_DEV_PASSWORD, PASSWORD_DEFAULT);
-    $users = [];
-    foreach (mockUsers() as $user) {
-        $users[$user['id']] = $user + [
-            'password_hash'   => $hash,
-            'must_change'     => false,
-            'created_at'      => $now,
-            'created_by'      => 'System (sample data)',
-            'updated_at'      => $now,
-            'updated_by'      => 'System (sample data)',
-            'last_login'      => null,
-        ];
-    }
-    $_SESSION['mock_store'] = [
-        'version' => MOCK_STORE_VERSION,
-        'users'   => $users,
-        'next_id' => max(array_keys($users)) + 1,
-        'audit'   => [],
+}
+
+function userFromRow(array $r): array
+{
+    return [
+        'id'            => (int) $r['id'],
+        'username'      => $r['username'],
+        'name'          => $r['full_name'],
+        'email'         => $r['email'],
+        'role'          => $r['role'],
+        'office'        => $r['office_code'],
+        'position'      => $r['position'],
+        'status'        => $r['status'],
+        'password_hash' => $r['password_hash'],
+        'must_change'   => (bool) $r['must_change_password'],
+        'last_login'    => $r['last_login_at'],
+        'created_at'    => $r['created_at'],
+        'created_by'    => dbActorLabel($r['created_by_name'] ?? null, $r['created_by_username'] ?? null) ?: 'System',
+        'updated_at'    => $r['updated_at'],
+        'updated_by'    => dbActorLabel($r['updated_by_name'] ?? null, $r['updated_by_username'] ?? null) ?: 'System',
     ];
 }
 
 /** All users keyed by id. */
 function storeUsers(): array
 {
-    storeInit();
-    return $_SESSION['mock_store']['users'];
+    return dbCached('users', function () {
+        $rows = dbAll('SELECT u.*, c.full_name AS created_by_name, c.username AS created_by_username,
+                              m.full_name AS updated_by_name, m.username AS updated_by_username
+                       FROM users u
+                       LEFT JOIN users c ON c.id = u.created_by
+                       LEFT JOIN users m ON m.id = u.updated_by
+                       ORDER BY u.id');
+        $users = [];
+        foreach ($rows as $row) {
+            $users[(int) $row['id']] = userFromRow($row);
+        }
+        return $users;
+    });
 }
 
 function storeFindUser(int $id): ?array
@@ -78,47 +72,63 @@ function storeFindUserByIdentity(string $identity): ?array
     return null;
 }
 
+/** Array keys used by the pages => columns of the users table. */
+const USER_COLUMNS = [
+    'username' => 'username', 'name' => 'full_name', 'email' => 'email', 'role' => 'role', 'office' => 'office_code',
+    'position' => 'position', 'status' => 'status', 'password_hash' => 'password_hash',
+    'must_change' => 'must_change_password', 'last_login' => 'last_login_at',
+];
+
 /**
  * Insert (no id) or update (with id) a user. Returns the saved record.
- * Stamps who made the change and when, for accountability.
+ * Stamps who made the change, for accountability.
  */
 function storeSaveUser(array $user): array
 {
-    storeInit();
-    $actor = currentUser();
-    $actorName = $actor ? $actor['name'] . ' (' . $actor['username'] . ')' : 'System';
-    $now = date('Y-m-d H:i:s');
-
-    if (empty($user['id'])) {
-        $user['id'] = $_SESSION['mock_store']['next_id']++;
-        $user += ['created_at' => $now, 'created_by' => $actorName, 'last_login' => null, 'must_change' => true];
+    [$actorId] = dbActor();
+    $values = [];
+    foreach (USER_COLUMNS as $key => $column) {
+        if (array_key_exists($key, $user)) {
+            $values[$column] = $key === 'must_change' ? (int) (bool) $user[$key] : $user[$key];
+        }
     }
-    $user['updated_at'] = $now;
-    $user['updated_by'] = $actorName;
-    $existing = $_SESSION['mock_store']['users'][$user['id']] ?? [];
-    $_SESSION['mock_store']['users'][$user['id']] = array_merge($existing, $user);
-    return $_SESSION['mock_store']['users'][$user['id']];
+    if (empty($user['id'])) {
+        $values += ['must_change_password' => 1, 'position' => ''];
+        $values['created_by'] = $actorId;
+        $values['updated_by'] = $actorId;
+        $columns = array_keys($values);
+        dbExec('INSERT INTO users (' . implode(', ', $columns) . ') VALUES (' . implode(', ', array_fill(0, count($columns), '?')) . ')',
+            array_values($values));
+        $id = (int) db()->lastInsertId();
+    } else {
+        $id = (int) $user['id'];
+        $values['updated_by'] = $actorId;
+        $sets = implode(', ', array_map(fn ($c) => "$c = ?", array_keys($values)));
+        dbExec("UPDATE users SET $sets WHERE id = ?", [...array_values($values), $id]);
+    }
+    return storeFindUser($id);
 }
 
 /** Update fields of a user without changing the "updated by" stamp (e.g. last login). */
 function storeTouchUser(int $id, array $fields): void
 {
-    storeInit();
-    if (isset($_SESSION['mock_store']['users'][$id])) {
-        $_SESSION['mock_store']['users'][$id] = array_merge($_SESSION['mock_store']['users'][$id], $fields);
+    $values = [];
+    foreach (USER_COLUMNS as $key => $column) {
+        if (array_key_exists($key, $fields)) {
+            $values[$column] = $fields[$key];
+        }
+    }
+    if ($values) {
+        $sets = implode(', ', array_map(fn ($c) => "$c = ?", array_keys($values)));
+        // keep updated_at unchanged: this is not an edit of the account
+        dbExec("UPDATE users SET $sets, updated_at = updated_at WHERE id = ?", [...array_values($values), $id]);
     }
 }
 
 /** Count active administrators, optionally ignoring one user. */
 function storeActiveAdminCount(?int $exceptId = null): int
 {
-    $count = 0;
-    foreach (storeUsers() as $user) {
-        if ($user['role'] === 'Administrator' && $user['status'] === 'Active' && $user['id'] !== $exceptId) {
-            $count++;
-        }
-    }
-    return $count;
+    return (int) dbValue("SELECT COUNT(*) FROM users WHERE role = 'Administrator' AND status = 'Active' AND id <> ?", [$exceptId ?? 0]);
 }
 
 /** Generate a readable temporary password, e.g. "Kp7-mQ4x-Tz9". */
@@ -146,25 +156,28 @@ function generateTemporaryPassword(): string
  */
 function auditLog(string $action, string $target = '', string $details = '', ?array $actorOverride = null): void
 {
-    storeInit();
     $actor = $actorOverride ?? currentUser();
-    array_unshift($_SESSION['mock_store']['audit'], [
-        'time'     => date('Y-m-d H:i:s'),
-        'actor'    => $actor['name'] ?? 'Unknown',
-        'username' => $actor['username'] ?? '—',
-        'role'     => $actor['role'] ?? '—',
-        'action'   => $action,
-        'target'   => $target,
-        'details'  => $details,
-        'ip'       => $_SERVER['REMOTE_ADDR'] ?? '',
+    dbExec('INSERT INTO audit_log (action, target, details, user_id, username, actor_name, role, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+        $action, mb_substr($target, 0, 100), $details,
+        isset($actor['id']) && storeFindUser((int) $actor['id']) ? (int) $actor['id'] : null,
+        mb_substr($actor['username'] ?? '—', 0, 150), mb_substr($actor['name'] ?? 'Unknown', 0, 120), mb_substr($actor['role'] ?? '—', 0, 20),
+        $_SERVER['REMOTE_ADDR'] ?? '',
     ]);
-    $_SESSION['mock_store']['audit'] = array_slice($_SESSION['mock_store']['audit'], 0, AUDIT_LOG_LIMIT);
 }
 
+/** The most recent activity log entries, newest first. */
 function auditEntries(): array
 {
-    storeInit();
-    return $_SESSION['mock_store']['audit'];
+    return dbCached('audit', fn () => array_map(fn ($r) => [
+        'time'     => $r['created_at'],
+        'actor'    => $r['actor_name'],
+        'username' => $r['username'],
+        'role'     => $r['role'],
+        'action'   => $r['action'],
+        'target'   => $r['target'],
+        'details'  => (string) $r['details'],
+        'ip'       => $r['ip_address'],
+    ], dbAll('SELECT * FROM audit_log ORDER BY id DESC LIMIT ' . AUDIT_LOG_LIMIT)));
 }
 
 /** Labels for activity log actions. */

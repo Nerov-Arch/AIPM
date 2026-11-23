@@ -32,10 +32,12 @@ $awaiting = awaitingMyAction();
 <div class="app-shell">
     <?php include __DIR__ . '/sidebar.php'; ?>
     <div class="main-area">
+        <?php if (!empty((require dirname(__DIR__) . '/config/app.php')['show_sample_accounts'])): ?>
         <div class="dev-banner" role="note">
             <strong>Development version</strong>
-            <span>Sample data kept in this browser session only. Nothing is saved to a database yet.</span>
+            <span>Connected to the database. Sample test accounts are enabled; sign-in codes are shown on screen instead of emailed.</span>
         </div>
+        <?php endif; ?>
         <header class="topbar">
             <button class="mobile-menu" type="button" aria-label="Open menu" data-sidebar-toggle>☰</button>
             <nav class="breadcrumbs" aria-label="Breadcrumb">

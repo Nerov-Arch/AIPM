@@ -1,3 +1,6 @@
 # Uploaded receipt files are user data, never committed.
 uploads/receipts/*
 !uploads/receipts/.gitkeep
+
+# Local database credentials (never commit)
+config/database.local.php

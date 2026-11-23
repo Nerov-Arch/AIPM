@@ -9,7 +9,11 @@
 USE `aip_db`;
 SET NAMES utf8mb4;
 
--- Test accounts (the administrator 'admin' is created by aip_db.sql)
+-- Make the administrator a sample account too (name, email, no forced password change)
+UPDATE `users` SET `full_name` = 'Maria Villanueva', `email` = 'm.villanueva@indang.gov.ph', `must_change_password` = 0
+WHERE `username` = 'admin';
+
+-- Test accounts
 INSERT INTO `users` (`username`, `full_name`, `email`, `password_hash`, `role`, `office_code`, `position`, `status`, `must_change_password`) VALUES
   ('jbautista', 'Jose Bautista', 'j.bautista@indang.gov.ph', '$2y$10$IxSj6ScM5z2Lx3rErWzm3.PpU4oKfoig4RZ5eMfXuYcOsDdc7bCy6', 'Reviewer', 'MPDO', 'Planning Officer II', 'Active', 0),
   ('alim', 'Ana Lim', 'a.lim@indang.gov.ph', '$2y$10$IxSj6ScM5z2Lx3rErWzm3.PpU4oKfoig4RZ5eMfXuYcOsDdc7bCy6', 'Reviewer', 'MPDO', 'Municipal Planning and Development Coordinator', 'Active', 0),

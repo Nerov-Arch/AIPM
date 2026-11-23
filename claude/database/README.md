@@ -34,4 +34,5 @@ Change its email to the real administrator's `@indang.gov.ph` address. The sampl
 | Activity log | `audit_log` |
 | Views | `v_ppa_summary`, `v_fund_totals` |
 
-Note: the PHP pages still use the session store until they are switched to this database.
+The PHP pages use this database through `includes/db.php`. Connection settings are in
+`config/database.php` (a password goes in the git-ignored `config/database.local.php`).

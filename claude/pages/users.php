@@ -47,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $users = storeUsers();
-$roles = mockRoles();
-$offices = mockOffices();
+$roles = roleOptions();
+$offices = officeList();
 $auditEntries = auditEntries();
 $roleCounts = array_count_values(array_column(array_filter($users, fn ($u) => $u['status'] === 'Active'), 'role'));
 $activeCount = count(array_filter($users, fn ($u) => $u['status'] === 'Active'));

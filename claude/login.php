@@ -47,7 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $pending = otpPending();
 $devCode = $pending ? ($_SESSION['dev_otp_code'] ?? '') : '';
-$testAccounts = array_filter(storeUsers(), fn ($u) => $u['status'] === 'Active');
+$appConfig = require __DIR__ . '/config/app.php';
+// Sample test accounts are listed only while show_sample_accounts is on (config/app.php).
+$testAccounts = $appConfig['show_sample_accounts']
+    ? array_filter(storeUsers(), fn ($u) => $u['status'] === 'Active' && in_array($u['username'], $appConfig['sample_usernames'], true))
+    : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -106,9 +110,9 @@ $testAccounts = array_filter(storeUsers(), fn ($u) => $u['status'] === 'Active')
                 </form>
                 <?php endif; ?>
                 <div class="support-note"><span>ⓘ</span> Need assistance? Contact the MPDO system administrator.</div>
-                <?php if (!$pending): ?><details class="dev-accounts">
+                <?php if (!$pending && $testAccounts): ?><details class="dev-accounts">
                     <summary>Development test accounts</summary>
-                    <p>Password for the sample accounts: <strong><?= e(MOCK_DEV_PASSWORD) ?></strong>. Click an account to fill in the form. The sign-in code is shown on the next screen because email delivery is off in this version.</p>
+                    <p>Password for the sample accounts: <strong><?= e($appConfig['sample_password']) ?></strong>. Click an account to fill in the form. The sign-in code is shown on the next screen because email delivery is off in this version.</p>
                     <ul>
                         <?php foreach ($testAccounts as $account): ?>
                             <li><button type="button" data-fill-login="<?= e($account['username']) ?>"><strong><?= e($account['username']) ?></strong><span><?= e($account['role']) ?> · <?= e($account['office']) ?> · <?= e($account['email']) ?></span></button></li>

@@ -4,8 +4,8 @@
  * Program, grouped by sector and implementing office, with readiness
  * checks and saved (numbered) versions.
  *
- * MOCK STORE: versions are kept in the session store until the database
- * phase, when they become `aip_versions` and `aip_version_entries` tables.
+ * Storage: MySQL tables `aip_versions` and `aip_version_entries` (a frozen
+ * copy of every PPA row at the time the version was saved).
  */
 
 /** PPA statuses included in the consolidated AIP. */
@@ -213,23 +213,63 @@ function aipHasBlockingErrors(?array $checks = null): bool
 
 /* ---------------- Versions ---------------- */
 
+/** Kept for older callers; the database needs no initialisation. */
 function aipStoreInit(): void
 {
-    storeInit();
-    $_SESSION['mock_store']['aip_versions'] ??= [];
 }
 
-/** Saved versions, newest first. */
+/** Saved versions of the AIP year, newest first, each with its entries and totals. */
 function aipVersions(): array
 {
-    aipStoreInit();
-    return array_reverse($_SESSION['mock_store']['aip_versions']);
+    return dbCached('aip_versions', function () {
+        $rows = dbAll('SELECT v.*, c.full_name AS c_name, c.username AS c_user, f.full_name AS f_name, f.username AS f_user,
+                              r.record_no, r.record_date
+                       FROM aip_versions v
+                       LEFT JOIN users c ON c.id = v.created_by
+                       LEFT JOIN users f ON f.id = v.finalized_by
+                       LEFT JOIN approval_records r ON r.id = v.approval_record_id
+                       WHERE v.fiscal_year = ? ORDER BY v.version_no DESC', [AIP_FISCAL_YEAR]);
+        $entries = [];
+        foreach (dbAll('SELECT e.* FROM aip_version_entries e JOIN aip_versions v ON v.id = e.aip_version_id
+                        WHERE v.fiscal_year = ? ORDER BY e.id', [AIP_FISCAL_YEAR]) as $e) {
+            $entries[(int) $e['aip_version_id']][] = [
+                'ref' => $e['ref'], 'title' => $e['title'], 'type' => $e['ppa_type'], 'program' => $e['program'],
+                'sector' => $e['sector_code'], 'office' => $e['office_code'], 'start' => (string) $e['start_date'],
+                'end' => (string) $e['end_date'], 'expected_output' => (string) $e['expected_output'],
+                'fund' => (string) $e['fund_code'], 'allocations' => json_decode((string) $e['allocations'], true) ?: [],
+                'fund_label' => $e['fund_label'], 'ps' => (float) $e['ps'], 'mooe' => (float) $e['mooe'], 'co' => (float) $e['co'],
+                'cost' => (float) $e['total_cost'], 'cc_adaptation' => (float) $e['cc_adaptation'],
+                'cc_mitigation' => (float) $e['cc_mitigation'], 'cc_typology' => (string) $e['cc_typology'],
+                'status' => $e['status'], 'record' => (string) $e['record_no'],
+            ];
+        }
+        $versions = [];
+        foreach ($rows as $v) {
+            $list = $entries[(int) $v['id']] ?? [];
+            $versions[] = [
+                'id'              => (int) $v['id'],
+                'no'              => (int) $v['version_no'],
+                'fy'              => (int) $v['fiscal_year'],
+                'kind'            => $v['kind'],
+                'status'          => $v['status'],
+                'created_by'      => dbActorLabel($v['c_name'], $v['c_user']) ?: 'System',
+                'created_at'      => $v['created_at'],
+                'remarks'         => (string) $v['remarks'],
+                'entries'         => $list,
+                'totals'          => aipTotals($list),
+                'finalized_by'    => dbActorLabel($v['f_name'], $v['f_user']),
+                'finalized_at'    => (string) $v['finalized_at'],
+                'resolution'      => (string) $v['record_no'],
+                'resolution_date' => (string) $v['record_date'],
+            ];
+        }
+        return $versions;
+    });
 }
 
 function aipFindVersion(int $no): ?array
 {
-    aipStoreInit();
-    foreach ($_SESSION['mock_store']['aip_versions'] as $version) {
+    foreach (aipVersions() as $version) {
         if ($version['no'] === $no) {
             return $version;
         }
@@ -250,46 +290,55 @@ function aipFinalVersion(): ?array
 /** Save a snapshot of the current consolidated AIP. */
 function aipCreateVersion(string $remarks): array
 {
-    aipStoreInit();
-    $user = currentUser();
-    $entries = aipEntries();
-    $final = aipFinalVersion();
-    $version = [
-        'no'         => count($_SESSION['mock_store']['aip_versions']) + 1,
-        'fy'         => AIP_FISCAL_YEAR,
-        'kind'       => $final ? 'Amendment' : 'Original',
-        'status'     => 'draft',
-        'created_by' => $user['name'] . ' (' . $user['username'] . ')',
-        'created_at' => date('Y-m-d H:i:s'),
-        'remarks'    => $remarks,
-        'entries'    => $entries,
-        'totals'     => aipTotals($entries),
-    ];
-    $_SESSION['mock_store']['aip_versions'][] = $version;
-    return $version;
+    [$actorId] = dbActor();
+    $no = dbTransaction(function () use ($remarks, $actorId) {
+        $entries = aipEntries();
+        $totals = aipTotals($entries);
+        $no = (int) dbValue('SELECT COALESCE(MAX(version_no), 0) + 1 FROM aip_versions WHERE fiscal_year = ?', [AIP_FISCAL_YEAR]);
+        $kind = aipFinalVersion() ? 'Amendment' : 'Original';
+        dbExec('INSERT INTO aip_versions (fiscal_year, version_no, kind, status, remarks, ppa_count, total_ps, total_mooe, total_co,
+                                          total_cc_adaptation, total_cc_mitigation, created_by)
+                VALUES (?, ?, ?, \'draft\', ?, ?, ?, ?, ?, ?, ?, ?)', [
+            AIP_FISCAL_YEAR, $no, $kind, dbNull($remarks), count($entries),
+            array_sum(array_column($entries, 'ps')), array_sum(array_column($entries, 'mooe')), array_sum(array_column($entries, 'co')),
+            array_sum(array_column($entries, 'cc_adaptation')), array_sum(array_column($entries, 'cc_mitigation')), $actorId,
+        ]);
+        $versionId = (int) db()->lastInsertId();
+        foreach ($entries as $e) {
+            dbExec('INSERT INTO aip_version_entries (aip_version_id, ppa_id, ref, title, ppa_type, program, sector_code, office_code,
+                        start_date, end_date, expected_output, fund_code, allocations, fund_label, record_no, status, ps, mooe, co,
+                        cc_adaptation, cc_mitigation, cc_typology)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+                $versionId, ppaId($e['ref']), $e['ref'], $e['title'], $e['type'], $e['program'], $e['sector'], $e['office'],
+                dbNull($e['start']), dbNull($e['end']), $e['expected_output'], dbNull($e['fund']),
+                $e['allocations'] ? json_encode($e['allocations']) : null, $e['fund_label'], dbNull($e['record']), $e['status'],
+                $e['ps'], $e['mooe'], $e['co'], $e['cc_adaptation'], $e['cc_mitigation'], dbNull($e['cc_typology']),
+            ]);
+        }
+        return $no;
+    });
+    return aipFindVersion($no);
 }
 
 /** Mark a version as the final consolidated AIP (supersedes any earlier final). */
 function aipFinalizeVersion(int $no, string $resolution, string $resolutionDate): ?array
 {
-    aipStoreInit();
-    $user = currentUser();
-    $result = null;
-    foreach ($_SESSION['mock_store']['aip_versions'] as &$version) {
-        if ($version['status'] === 'final') {
-            $version['status'] = 'superseded';
-        }
-        if ($version['no'] === $no) {
-            $version['status'] = 'final';
-            $version['finalized_by'] = $user['name'] . ' (' . $user['username'] . ')';
-            $version['finalized_at'] = date('Y-m-d H:i:s');
-            $version['resolution'] = $resolution;
-            $version['resolution_date'] = $resolutionDate;
-            $result = $version;
-        }
+    if (!aipFindVersion($no)) {
+        return null;
     }
-    unset($version);
-    return $result;
+    [$actorId] = dbActor();
+    dbTransaction(function () use ($no, $actorId) {
+        dbExec("UPDATE aip_versions SET status = 'superseded' WHERE fiscal_year = ? AND status = 'final'", [AIP_FISCAL_YEAR]);
+        dbExec("UPDATE aip_versions SET status = 'final', finalized_by = ?, finalized_at = NOW() WHERE fiscal_year = ? AND version_no = ?",
+            [$actorId, AIP_FISCAL_YEAR, $no]);
+    });
+    $version = aipFindVersion($no);
+    if ($resolution !== '') {
+        // the record itself is created and linked by linkAipVersionToRecord()
+        $version['resolution'] = $resolution;
+        $version['resolution_date'] = $resolutionDate;
+    }
+    return $version;
 }
 
 /**

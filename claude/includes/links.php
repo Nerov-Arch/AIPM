@@ -7,9 +7,8 @@
  *   PPA ── approval records         (many-to-many, this file)
  *   AIP version ── approval record  (adoption of the consolidated AIP)
  *
- * MOCK STORE: approval records live in the session store until the
- * database phase, when they become an `approval_records` table plus a
- * `ppa_approval_records` link table (ppa_id, record_id).
+ * Storage: MySQL tables `approval_records` and `ppa_approval_records`
+ * (ppa_id, approval_record_id); an AIP version points to its adoption record.
  */
 
 /** Kinds of approval record. */
@@ -18,45 +17,47 @@ function approvalRecordTypes(): array
     return ['SB Resolution', 'LDC Resolution', 'Executive Order', 'Memorandum'];
 }
 
-/** MOCK: the approval records behind the sample PPAs, plus one not yet linked. */
-function approvalRecordSeeds(): array
-{
-    $fy = AIP_FISCAL_YEAR;
-    return [
-        'SB Res. No. 2026-075' => ['type' => 'SB Resolution', 'date' => '2026-08-20', 'subject' => 'Approving the CLUP updating activity for inclusion in the FY ' . $fy . ' AIP', 'ppas' => ["PPA-$fy-014"]],
-        'SB Res. No. 2026-098' => ['type' => 'SB Resolution', 'date' => '2026-09-14', 'subject' => 'Approving social protection and environmental PPAs for FY ' . $fy, 'ppas' => ["PPA-$fy-012", "PPA-$fy-013"]],
-        'SB Res. No. 2026-114' => ['type' => 'SB Resolution', 'date' => '2026-10-06', 'subject' => 'Approving the barangay health workers capability building program', 'ppas' => ["PPA-$fy-010"]],
-        'LDC Res. No. 2026-012' => ['type' => 'LDC Resolution', 'date' => '2026-10-10', 'subject' => 'Endorsing priority infrastructure PPAs to the Sangguniang Bayan', 'ppas' => []],
-    ];
-}
+/* ---------------- Store access (tables approval_records, ppa_approval_records) ---------------- */
 
-/* ---------------- Store access ---------------- */
-
+/** Kept for older callers; the database needs no initialisation. */
 function linkStoreInit(): void
 {
-    storeInit();
-    if (!isset($_SESSION['mock_store']['approval_records'])) {
-        $records = [];
-        foreach (approvalRecordSeeds() as $no => $seed) {
-            $records[$no] = $seed + ['no' => $no, 'aip_version' => null, 'remarks' => '', 'created_by' => 'System (sample data)', 'created_at' => $seed['date'] . ' 09:00:00'];
-        }
-        $_SESSION['mock_store']['approval_records'] = $records;
-    }
 }
 
-/** All approval records, newest date first. */
+/** All approval records keyed by number, newest date first. */
 function approvalRecords(): array
 {
-    linkStoreInit();
-    $records = $_SESSION['mock_store']['approval_records'];
-    uasort($records, fn ($a, $b) => [$b['date'], $b['no']] <=> [$a['date'], $a['no']]);
-    return $records;
+    return dbCached('records', function () {
+        $rows = dbAll('SELECT r.*, u.full_name, u.username,
+                              (SELECT v.version_no FROM aip_versions v WHERE v.approval_record_id = r.id ORDER BY v.version_no DESC LIMIT 1) AS aip_version
+                       FROM approval_records r LEFT JOIN users u ON u.id = r.created_by
+                       ORDER BY r.record_date DESC, r.record_no DESC');
+        $records = [];
+        foreach ($rows as $r) {
+            $records[$r['record_no']] = [
+                'id'          => (int) $r['id'],
+                'no'          => $r['record_no'],
+                'type'        => $r['record_type'],
+                'date'        => $r['record_date'],
+                'subject'     => $r['subject'],
+                'remarks'     => (string) $r['remarks'],
+                'ppas'        => [],
+                'aip_version' => $r['aip_version'] === null ? null : (int) $r['aip_version'],
+                'created_by'  => dbActorLabel($r['full_name'], $r['username']) ?: 'System',
+                'created_at'  => $r['created_at'],
+            ];
+        }
+        $byId = array_column($records, 'no', 'id');
+        foreach (dbAll('SELECT l.approval_record_id, p.ref FROM ppa_approval_records l JOIN ppas p ON p.id = l.ppa_id ORDER BY p.ref') as $l) {
+            $records[$byId[(int) $l['approval_record_id']]]['ppas'][] = $l['ref'];
+        }
+        return $records;
+    });
 }
 
 function findApprovalRecord(string $no): ?array
 {
-    linkStoreInit();
-    return $_SESSION['mock_store']['approval_records'][$no] ?? null;
+    return approvalRecords()[$no] ?? null;
 }
 
 /** Find a record by number (case- and space-insensitive). */
@@ -74,28 +75,41 @@ function matchApprovalRecord(string $no): ?array
 /** Create a record (number must be unique). Returns the record. */
 function createApprovalRecord(string $no, string $type, string $date, string $subject, string $remarks = ''): array
 {
-    linkStoreInit();
-    $user = currentUser();
+    [$actorId] = dbActor();
     $no = preg_replace('/\s+/', ' ', trim($no));
-    $record = ['no' => $no, 'type' => $type, 'date' => $date, 'subject' => $subject, 'remarks' => $remarks, 'ppas' => [], 'aip_version' => null,
-               'created_by' => $user ? $user['name'] . ' (' . $user['username'] . ')' : 'System', 'created_at' => date('Y-m-d H:i:s')];
-    $_SESSION['mock_store']['approval_records'][$no] = $record;
+    dbExec('INSERT INTO approval_records (record_no, record_type, record_date, subject, remarks, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+        [$no, $type, $date, $subject, dbNull($remarks), $actorId]);
     auditLog('link.record_create', $no, $type . ' · ' . $subject);
-    return $record;
+    return findApprovalRecord($no);
 }
 
+/** Update a record's details (type, date, subject, remarks) or the AIP version it adopts. */
 function updateApprovalRecord(string $no, array $fields): void
 {
-    linkStoreInit();
-    if (isset($_SESSION['mock_store']['approval_records'][$no])) {
-        $_SESSION['mock_store']['approval_records'][$no] = array_merge($_SESSION['mock_store']['approval_records'][$no], $fields);
+    $record = findApprovalRecord($no);
+    if (!$record) {
+        return;
+    }
+    $map = ['type' => 'record_type', 'date' => 'record_date', 'subject' => 'subject', 'remarks' => 'remarks'];
+    $values = [];
+    foreach ($map as $key => $column) {
+        if (array_key_exists($key, $fields)) {
+            $values[$column] = $key === 'remarks' ? dbNull($fields[$key]) : $fields[$key];
+        }
+    }
+    if ($values) {
+        $sets = implode(', ', array_map(fn ($c) => "$c = ?", array_keys($values)));
+        dbExec("UPDATE approval_records SET $sets WHERE id = ?", [...array_values($values), $record['id']]);
+    }
+    if (array_key_exists('aip_version', $fields) && $fields['aip_version'] !== null) {
+        dbExec('UPDATE aip_versions SET approval_record_id = ? WHERE fiscal_year = ? AND version_no = ?',
+            [$record['id'], AIP_FISCAL_YEAR, (int) $fields['aip_version']]);
     }
 }
 
 function deleteApprovalRecord(string $no): void
 {
-    linkStoreInit();
-    unset($_SESSION['mock_store']['approval_records'][$no]);
+    dbExec('DELETE FROM approval_records WHERE record_no = ?', [$no]);
 }
 
 /* ---------------- PPA ↔ approval record links ---------------- */
@@ -120,13 +134,13 @@ function syncPpaRecordField(string $ref, string $historyAction, string $remarks 
 
 function linkPpaToRecord(string $ref, string $no): bool
 {
-    linkStoreInit();
-    $records = &$_SESSION['mock_store']['approval_records'];
-    if (!isset($records[$no]) || in_array($ref, $records[$no]['ppas'], true)) {
+    $record = findApprovalRecord($no);
+    $ppaId = ppaId($ref);
+    if (!$record || $ppaId === null || in_array($ref, $record['ppas'], true)) {
         return false;
     }
-    $records[$no]['ppas'][] = $ref;
-    unset($records);
+    [$actorId] = dbActor();
+    dbExec('INSERT INTO ppa_approval_records (ppa_id, approval_record_id, linked_by) VALUES (?, ?, ?)', [$ppaId, $record['id'], $actorId]);
     syncPpaRecordField($ref, 'Linked to approval record ' . $no);
     auditLog('link.attach', $ref, 'Linked to ' . $no);
     return true;
@@ -134,13 +148,12 @@ function linkPpaToRecord(string $ref, string $no): bool
 
 function unlinkPpaFromRecord(string $ref, string $no, string $reason): bool
 {
-    linkStoreInit();
-    $records = &$_SESSION['mock_store']['approval_records'];
-    if (!isset($records[$no]) || !in_array($ref, $records[$no]['ppas'], true)) {
+    $record = findApprovalRecord($no);
+    $ppaId = ppaId($ref);
+    if (!$record || $ppaId === null || !in_array($ref, $record['ppas'], true)) {
         return false;
     }
-    $records[$no]['ppas'] = array_values(array_diff($records[$no]['ppas'], [$ref]));
-    unset($records);
+    dbExec('DELETE FROM ppa_approval_records WHERE ppa_id = ? AND approval_record_id = ?', [$ppaId, $record['id']]);
     syncPpaRecordField($ref, 'Unlinked from approval record ' . $no, $reason);
     auditLog('link.detach', $ref, 'Unlinked from ' . $no . ' · ' . $reason);
     return true;
@@ -250,7 +263,7 @@ function linkIssues(): array
 {
     $issues = [];
     $funds = fundSources();
-    $offices = mockOffices();
+    $offices = officeList();
     foreach (storePpas() as $ppa) {
         if ($ppa['status'] === 'draft') {
             continue;

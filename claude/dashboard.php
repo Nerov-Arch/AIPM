@@ -13,7 +13,7 @@ $filters = [
     'sector' => (string) ($_GET['sector'] ?? ''),
 ];
 $filters = array_filter($filters, fn ($v) => $v !== '');
-if (isset($filters['office']) && !isset(mockOffices()[$filters['office']])) { unset($filters['office']); }
+if (isset($filters['office']) && !isset(officeList()[$filters['office']])) { unset($filters['office']); }
 if (isset($filters['sector']) && !isset(ppaSectors()[$filters['sector']])) { unset($filters['sector']); }
 $d = dashboardData($filters);
 $me = currentUser();
@@ -53,7 +53,7 @@ $awaitingHint = can('review.act') ? 'Submitted PPAs waiting for your MPDO evalua
 
 <form class="filter-bar dashboard-filters no-print" method="get">
     <?php if (can('scope.all_offices')): ?>
-        <label>Office<select name="office"><option value="">All offices</option><?php foreach (mockOffices() as $code => $name): ?><option value="<?= e($code) ?>" <?= ($filters['office'] ?? '') === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
+        <label>Office<select name="office"><option value="">All offices</option><?php foreach (officeList() as $code => $name): ?><option value="<?= e($code) ?>" <?= ($filters['office'] ?? '') === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
     <?php endif; ?>
     <label>Sector<select name="sector"><option value="">All sectors</option><?php foreach (ppaSectors() as $code => $name): ?><option value="<?= e($code) ?>" <?= ($filters['sector'] ?? '') === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select></label>
     <button class="secondary-button" type="submit">Apply</button>

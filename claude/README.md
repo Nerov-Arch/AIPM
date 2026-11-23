@@ -2,19 +2,21 @@
 
 Web-Based Annual Investment Program (AIP) System built with PHP, HTML, CSS and vanilla JavaScript.
 
-> **Development version.** The MySQL database has not been implemented yet. Records start from
-> sample data and changes are kept only in the browser session (lost when the browser closes).
-> The login is a development login: test accounts share one password and the sign-in code is
-> shown on screen instead of emailed. A banner on every page states this.
+> **Development version.** All records are stored in a **MySQL database** (`aip_db`) and are shared
+> between every browser and user. The test accounts share one development password and the
+> sign-in code is shown on screen instead of emailed; a banner on every page states this while
+> the test accounts are switched on.
 
 ## Running locally (XAMPP)
 
 See **XAMPP-GUIDE.md** for the full step-by-step guide. In short:
 
 1. Copy this folder into `C:\xampp\htdocs\` (e.g. `C:\xampp\htdocs\claude`).
-2. Start **Apache** in the XAMPP Control Panel. MySQL is not needed yet.
-3. Open `http://localhost/claude/`.
-4. Sign in with a development test account (password `Dev@2026` for all). After the password,
+2. Start **Apache** and **MySQL** in the XAMPP Control Panel.
+3. In phpMyAdmin, import `database/aip_db.sql`, then `database/aip_sample_data.sql` for the
+   test accounts and sample PPAs (see `database/README.md`).
+4. Open `http://localhost/claude/`.
+5. Sign in with a development test account (password `Dev@2026` for all). After the password,
    the system asks for a 6-digit **sign-in code** that would be emailed to the account's
    `@indang.gov.ph` address. Email delivery is off in this version, so the code is shown on the
    sign-in screen, clearly labelled.
@@ -66,15 +68,15 @@ The login page lists these accounts; click one to fill in the username.
 
 | Feature | Status |
 |---|---|
-| Create user (temporary password shown once, must change at first sign-in) | Works (session store) |
-| Edit name, username, government email, position, role, office, status | Works (session store) |
+| Create user (temporary password shown once, must change at first sign-in) | Works (MySQL) |
+| Edit name, username, government email, position, role, office, status | Works (MySQL) |
 | Every account is linked to an `@indang.gov.ph` government email (checked in the browser and on the server) | Enforced |
 | Two-step sign-in: password, then a 6-digit one-time code sent to the government email (valid 5 minutes, 5 tries, new code after 60 seconds) | Works; **email delivery is a placeholder** (see below) |
-| Activate / deactivate, reset password | Works (session store) |
+| Activate / deactivate, reset password | Works (MySQL) |
 | Roles: Administrator, Encoder, Reviewer (reviews and approves; the former Approver role is merged into it), Finance, Auditor | Enforced on every page |
 | Encoders limited to their own office's PPAs | Enforced |
-| Activity log of sign-ins, account changes and denied access | Works (session store) |
-| My Account: view own role, change password | Works (session store) |
+| Activity log of sign-ins, account changes and denied access | Works (MySQL) |
+| My Account: view own role, change password | Works (MySQL) |
 | Safeguards: cannot change own role/status, cannot remove last active admin, unique username/email | Enforced |
 | Sign-in lockout after 5 failed attempts (5 minutes), CSRF protection on all forms | Works |
 
@@ -85,9 +87,11 @@ log live in `includes/store.php`.
 > is off, the code is shown on the sign-in screen with a "Development mode" notice. Sending real
 > email needs an SMTP relay configured for PHP; no SMTP credentials are stored in the code.
 
-> **Session store, not a database.** Accounts and the activity log are kept in the PHP session.
-> They survive signing out and switching test accounts in the same browser, but reset when the
-> browser session ends, and are not shared between browsers or computers.
+> **Database settings.** `config/database.php` holds the XAMPP defaults (localhost, database
+> `aip_db`, user `root`, no password). If your MySQL user has a password, copy
+> `config/database.local.example.php` to `config/database.local.php` and put it there; that file
+> is git-ignored, so the password is never committed. If MySQL is not running, every page shows a
+> short setup message instead of an error.
 
 ## Project Encoding module
 
@@ -95,14 +99,14 @@ log live in `includes/store.php`.
 |---|---|
 | Standardized AIP fields: reference code, title, type, program, sector, description, expected outputs, office, schedule, PS/MOOE/CO (total computed), fund source | Done |
 | Climate change expenditure is **not** encoded by the office; the MPDO enters it at final approval | Done |
-| Save draft (title and office only), edit, submit for review | Works (session store) |
-| Returned PPAs show reviewer remarks; encoder revises and resubmits | Works (session store) |
-| The office can still edit a PPA while it is Pending Review; each edit is recorded with what changed and flagged to the reviewer. Editing stops once the MPDO forwards it to Finance | Works (session store) |
+| Save draft (title and office only), edit, submit for review | Works (MySQL) |
+| Returned PPAs show reviewer remarks; encoder revises and resubmits | Works (MySQL) |
+| The office can still edit a PPA while it is Pending Review; each edit is recorded with what changed and flagged to the reviewer. Editing stops once the MPDO forwards it to Finance | Works (MySQL) |
 | Delete drafts | Enforced |
 | Duplicate check: same title for the same office in the same AIP year is rejected | Enforced |
 | Encoders encode and see only their own office's PPAs; drafts are private to the office | Enforced |
 | Submitted PPAs appear in Review, Linking, Dashboard, Consolidation and Fund Monitoring | Works |
-| Status history on each PPA; create/edit/submit/resubmit/delete recorded in the activity log | Works (session store) |
+| Status history on each PPA; create/edit/submit/resubmit/delete recorded in the activity log | Works (MySQL) |
 | Matching browser and server validation for every field | Done |
 
 PPA fields, rules and storage are in `includes/ppa.php`.
@@ -111,15 +115,15 @@ PPA fields, rules and storage are in `includes/ppa.php`.
 
 | Feature | Status |
 |---|---|
-| Fund sources with short code, account code, category, description, FY ceiling and active status | Works (session store) |
-| Add, edit, activate/deactivate fund sources; delete only when no PPA uses them | Works (session store) |
-| Every PPA charged to one or more fund sources; MPDO can split a PPA's cost across sources (must equal the PPA cost, basis required) | Works (session store) |
+| Fund sources with short code, account code, category, description, FY ceiling and active status | Works (MySQL) |
+| Add, edit, activate/deactivate fund sources; delete only when no PPA uses them | Works (MySQL) |
+| Every PPA charged to one or more fund sources; MPDO can split a PPA's cost across sources (must equal the PPA cost, basis required) | Works (MySQL) |
 | Per-fund ceiling, programmed (approved), pending, available and utilized amounts, with a detail page per fund | Done |
 | Automatic funding checks: under/over-allocated PPAs, missing fund source, inactive or unknown source, primary fund not in split, over-utilization, fund over ceiling or at risk | Done |
 | Only active fund sources can be chosen when encoding | Enforced |
 | Requested vs approved budget: per PPA and per fund source, with the difference (tab "Requested vs approved") | Done |
 | Administrators, Reviewers and Finance manage funds; Auditors view only; Encoders have no access | Enforced |
-| Fund and allocation changes recorded in the activity log and PPA history | Works (session store) |
+| Fund and allocation changes recorded in the activity log and PPA history | Works (MySQL) |
 
 Fund logic is in `includes/funds.php`. Sample data includes one under-allocated PPA (PPA-2027-013)
 and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrate the checks.
@@ -129,7 +133,7 @@ and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrat
 | Feature | Status |
 |---|---|
 | One MPDO **Reviewer** role evaluates and gives the final approval (the separate Approver role was merged into it); one Review & Approval queue | Done |
-| Sequence: Encoder submits → MPDO evaluates (return to office, or forward to Finance) → **Finance reviews the budget** (approve as requested or lower, or return to MPDO) → MPDO final approval | Works (session store) |
+| Sequence: Encoder submits → MPDO evaluates (return to office, or forward to Finance) → **Finance reviews the budget** (approve as requested or lower, or return to MPDO) → MPDO final approval | Works (MySQL) |
 | Review checklist (all items required to forward); remarks required to return, disapprove, send back or return to MPDO | Enforced |
 | Finance approves PS / MOOE / CO amounts; the total cannot exceed the request, and remarks are required when it is lower. Split fund allocations are scaled to the approved total | Enforced |
 | The requested budget is kept and compared with the approved budget on the PPA, the budget page, Fund Monitoring and the dashboard | Done |
@@ -140,7 +144,7 @@ and a fund at risk of exceeding its ceiling (20% Development Fund) to demonstrat
 | Stage tracker (Encoding → MPDO Review → Budget Review → Final Approval → Implementation): current stage, who it is waiting on, days in status | Done |
 | Queues sorted oldest first with days waiting; items over 7 days flagged as overdue | Done |
 | "Awaiting your action" on the dashboard and a count on the bell, per role | Done |
-| Every decision recorded in the PPA history and the activity log | Works (session store) |
+| Every decision recorded in the PPA history and the activity log | Works (MySQL) |
 
 Workflow rules are in `includes/workflow.php`.
 
@@ -151,17 +155,16 @@ Workflow rules are in `includes/workflow.php`.
 | The implementing office records each expense of an approved PPA: date, description, amount, receipt / OR / voucher number and a **photo or scan of the receipt** (JPG, PNG, WEBP or PDF, up to 5 MB; the file type is checked from its contents) | Works |
 | Expenses cannot exceed the remaining approved budget; the first expense moves the PPA to Ongoing | Enforced |
 | Expenditure timeline per PPA: every expense in date order with running total, receipt preview and spending by month | Done |
-| Audit staff (Auditor role) see all expenses, open the receipts, and mark each expense **verified** or **flagged** (note required) | Works (session store) |
+| Audit staff (Auditor role) see all expenses, open the receipts, and mark each expense **verified** or **flagged** (note required) | Works (MySQL) |
 | Expenditure Audit page: totals, not-yet-audited / flagged / verified tabs, spending per PPA (approved, spent, unutilized) | Done |
 | Offices see only their own expenses and receipts, and can remove an expense only before it is audited | Enforced |
 | Receipt files are stored in `uploads/receipts/` with random names and served only through `pages/receipt.php` after a permission check (`uploads/.htaccess` blocks direct access on Apache) | Done |
 
 Expense logic is in `includes/expenses.php`.
 
-> **Receipt files are real files, but the expense records are not yet in a database.** The
-> records live in the session store; the uploaded files stay in `uploads/receipts/` after the
-> session ends. Delete the files there when resetting test data. Uploaded files are never
-> committed (see `.gitignore`).
+> **Receipts.** Expense records are in the `ppa_expenses` table; the uploaded files are saved in
+> `uploads/receipts/` and the table stores the file name. Delete the files there when resetting
+> test data. Uploaded files are never committed (see `.gitignore`).
 
 ## AIP Consolidation module
 
@@ -173,8 +176,8 @@ Expense logic is in `includes/expenses.php`.
 | Amounts in pesos or in thousand pesos (₱'000); preview filters by sector, office and fund source | Done |
 | Summaries by sector, fund source and office | Done |
 | Readiness checks: approved PPAs with funding errors or missing AIP fields (block saving), undecided PPAs that will be left out, possible duplicates across offices, changes since the last version | Done |
-| Saved versions (snapshots) by the MPDO reviewer; compare any version with current data (added, removed, changed) | Works (session store) |
-| An MPDO reviewer finalizes one version, optionally with the adoption resolution; later versions are amendments and supersede the earlier final | Works (session store) |
+| Saved versions (snapshots) by the MPDO reviewer; compare any version with current data (added, removed, changed) | Works (MySQL) |
+| An MPDO reviewer finalizes one version, optionally with the adoption resolution; later versions are amendments and supersede the earlier final | Works (MySQL) |
 | Print-ready AIP form (legal landscape) with Prepared/Attested/Approved signatories; CSV export of the current AIP or any version | Done |
 | Reviewers generate and finalize; Administrators, Finance and Auditors view; Encoders have no access; versions and finalization in the activity log | Enforced |
 
@@ -185,8 +188,8 @@ Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/ai
 | Feature | Status |
 |---|---|
 | Every PPA linked to its implementing office, fund sources (with amounts) and approval records | Done |
-| Approval records (SB/LDC resolutions, executive orders, memoranda) as their own records: number, type, date, subject; one record can cover many PPAs | Works (session store) |
-| Attach an existing record, register and attach a new one, or unlink (reason required); only approved PPAs can be linked | Works (session store) |
+| Approval records (SB/LDC resolutions, executive orders, memoranda) as their own records: number, type, date, subject; one record can cover many PPAs | Works (MySQL) |
+| Attach an existing record, register and attach a new one, or unlink (reason required); only approved PPAs can be linked | Works (MySQL) |
 | Resolutions are registered and linked here (the final decision itself only records the approval status) | Done |
 | Finalizing the AIP with a resolution links the record to the AIP version | Done |
 | Office pages: the office's PPAs, fund sources used, approval records and user accounts | Done |
@@ -194,7 +197,7 @@ Consolidation logic is in `includes/aip.php`; the AIP form table is `includes/ai
 | Graph view of one PPA's connections | Done |
 | Link checks: approved PPAs without a record, records not linked to anything, records on unapproved PPAs, unknown or inactive fund sources, offices with open PPAs but no active encoder | Done |
 | Reviewers manage records; Administrators, Finance and Auditors view; Encoders see their own office only | Enforced |
-| Link changes recorded in the PPA history and activity log | Works (session store) |
+| Link changes recorded in the PPA history and activity log | Works (MySQL) |
 
 Linking logic is in `includes/links.php`. Sample data includes an approved PPA with no record
 (PPA-2027-011) and an LDC resolution not yet linked, to demonstrate the checks.
@@ -217,31 +220,25 @@ Linking logic is in `includes/links.php`. Sample data includes an approved PPA w
 
 Indicator logic is in `includes/dashboard.php`.
 
-## What works now (no database needed)
+## What works now
 
-- Login, logout and protected pages (redirect to login from any folder).
-- Sidebar with all pages, active-page highlighting, breadcrumbs, mobile menu.
-- Pending / Processed tabs, filters, search, pagination and live record counts.
-- Detail dialogs for PPAs and users.
-- Dashboard, fund and consolidation totals calculated from the sample records.
-- Global search (top bar) across PPAs.
+- Every module reads and writes the MySQL database through PDO prepared statements; records are
+  shared between users and kept after the browser closes.
+- Login with password + emailed-style 6-digit code; failed attempts and codes are stored in the
+  database (`login_attempts`, `login_otps`), so the 5-attempt lockout applies across browsers.
+- Sidebar, breadcrumbs, mobile menu, tabs, filters, search, pagination and record counts.
+- Dashboard, fund and consolidation totals calculated from the database.
 - CSV export of any table and a print-ready consolidated AIP report (A4 landscape).
-- Project Encoding and user forms with matching browser and server validation.
+- Matching browser and server validation on every form; database constraints as a second check.
 
-## Temporary / mock components
+## Development-only components
 
-| Component | Location | Replaced in the database phase by |
+| Component | Location | Before real use |
 |---|---|---|
-| Sample offices, fund sources, PPAs, starting users | `includes/mock-data.php` | Prepared-statement queries |
-| Session-backed user accounts and activity log | `includes/store.php` | `users` and `audit_logs` tables |
-| Session-backed PPA records and status history | `includes/ppa.php` | `ppas` and `ppa_history` tables |
-| Session-backed fund sources and PPA allocations | `includes/funds.php` | `fund_sources` and `ppa_fund_allocations` tables |
-| Session-backed AIP versions | `includes/aip.php` | `aip_versions` and `aip_version_entries` tables |
-| Session-backed approval records and links | `includes/links.php` | `approval_records` and `ppa_approval_records` tables |
-| Session-backed expenses and audit status (receipt files on disk) | `includes/expenses.php` | `ppa_expenses` table; files kept in `uploads/receipts/` |
-| Sign-in code shown on screen instead of emailed (`MAIL_ENABLED = false`) | `config/mail.php`, `includes/mailer.php` | SMTP delivery |
-| Sample accounts' `@indang.gov.ph` emails are fictional | `includes/mock-data.php` | Real government emails |
-| Shared development password `Dev@2026` and test-account list on the login page | `includes/mock-data.php`, `login.php` | Removed |
+| Sign-in code shown on screen instead of emailed (`MAIL_ENABLED = false`) | `config/mail.php`, `includes/mailer.php` | Set up SMTP delivery |
+| Test accounts with fictional `@indang.gov.ph` emails and the shared password `Dev@2026` | `database/aip_sample_data.sql` | Do not import the sample file; create real accounts |
+| Test-account list on the login page and the development banner | `config/app.php` (`show_sample_accounts`) | Set to `false` |
+| Starting `admin` account (password `Dev@2026`, must be changed at first sign-in) | `database/aip_db.sql` | Change the password at first sign-in |
 | Fiscal year (`AIP_FISCAL_YEAR = 2027`) | `includes/helpers.php` | AIP cycle settings |
 
 ## Not yet available
@@ -249,8 +246,4 @@ Indicator logic is in `includes/dashboard.php`.
 - Department and fiscal year management screens.
 - Scanned copies of approval records (file upload), physical progress updates and marking a PPA completed.
 - Email delivery: sign-in codes and temporary passwords are shown on screen instead.
-
-## Database placeholder
-
-`config/database.php` contains an inactive PDO connection function with placeholder values.
-It is not called anywhere. It will be configured only in the separate database phase.
+- Re-importing `database/aip_db.sql` deletes all data; back up from phpMyAdmin (Export) first.

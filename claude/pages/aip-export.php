@@ -29,7 +29,7 @@ header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="aip-fy' . AIP_FISCAL_YEAR . '-' . $label . '.csv"');
 $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF");   // UTF-8 BOM so Excel shows ₱ and accents correctly
-fputcsv($out, ['Annual Investment Program CY ' . AIP_FISCAL_YEAR . ' - Municipality of Indang' . ($versionNo ? ' - Version ' . $versionNo : ' - Current consolidation') . ' (development version, sample data)']);
+fputcsv($out, ['Annual Investment Program CY ' . AIP_FISCAL_YEAR . ' - Municipality of Indang' . ($versionNo ? ' - Version ' . $versionNo : ' - Current consolidation') ]);
 fputcsv($out, ['Amounts in ' . ($thousands ? 'thousand pesos' : 'pesos')]);
 fputcsv($out, ['Sector', 'AIP Reference Code', 'PPA Description', 'Type', 'Program', 'Implementing Office', 'Start', 'Completion', 'Expected Outputs', 'Funding Source', 'PS', 'MOOE', 'CO', 'Total', 'CC Adaptation', 'CC Mitigation', 'CC Typology Code']);
 $amount = fn (float $n) => $thousands ? round($n / 1000, 2) : round($n, 2);

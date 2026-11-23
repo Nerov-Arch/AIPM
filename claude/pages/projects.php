@@ -15,7 +15,7 @@ requireLogin($assetPrefix);
 requirePermission($requiredPermission, $assetPrefix);
 
 // Encoders may only encode PPAs for their own office.
-$offices = array_filter(mockOffices(), fn ($name, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
+$offices = array_filter(officeList(), fn ($name, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
 $fundSources = activeFundSources();
 $sectors = ppaSectors();
 $fyStart = AIP_FISCAL_YEAR . '-01-01';
@@ -158,7 +158,7 @@ include '../includes/header.php';
             <?php if ($editing): ?><label>AIP Reference Code<input type="text" value="<?= e($editing['ref']) ?>" readonly class="readonly-input"></label><?php else: ?><p class="form-note ref-note">The AIP reference code (e.g. <?= e(nextPpaRef()) ?>) is assigned automatically when you save.</p><?php endif; ?>
             <label>PPA Title / Description <em>*</em><input name="title" type="text" maxlength="200" placeholder="e.g. Concreting of Barangay Farm-to-Market Road (1.2 km)" value="<?= e($old['title']) ?>" required><?= fieldError($errors, 'title') ?></label>
             <div class="form-columns">
-                <label>PPA Type <em>*</em><select name="type" required><option value="">Select type</option><?php foreach (mockPpaTypes() as $type): ?><option value="<?= e($type) ?>" <?= $old['type'] === $type ? 'selected' : '' ?>><?= e($type) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'type') ?></label>
+                <label>PPA Type <em>*</em><select name="type" required><option value="">Select type</option><?php foreach (ppaTypes() as $type): ?><option value="<?= e($type) ?>" <?= $old['type'] === $type ? 'selected' : '' ?>><?= e($type) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'type') ?></label>
                 <label>Sector <em>*</em><select name="sector" required><option value="">Select sector</option><?php foreach ($sectors as $code => $name): ?><option value="<?= e($code) ?>" <?= $old['sector'] === $code ? 'selected' : '' ?>><?= e($name) ?></option><?php endforeach; ?></select><?= fieldError($errors, 'sector') ?></label>
             </div>
             <label>Program <span class="optional-label">(required for projects and activities)</span><input name="program" type="text" maxlength="150" placeholder="e.g. Rural Infrastructure Program" value="<?= e($old['program']) ?>" list="program-list"><?= fieldError($errors, 'program') ?></label>

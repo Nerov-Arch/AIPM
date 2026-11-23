@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ? ((float) $ppa[$field] > 0 ? number_format((float) $ppa[$field], 2, '.', '') : '')
                     : (string) ($ppa[$field] ?? '');
             }
-            $offices = array_filter(mockOffices(), fn ($n, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
+            $offices = array_filter(officeList(), fn ($n, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
             [$errors] = validatePpa($input, false, $offices, $ppa['ref']);
             if ($errors) {
                 flash('error', e($ppa['ref']) . ' is not complete yet (' . count($errors) . ' field' . (count($errors) === 1 ? '' : 's') . ' to fix). <a href="projects.php?ref=' . urlencode($ppa['ref']) . '">Open it to finish encoding</a>.');

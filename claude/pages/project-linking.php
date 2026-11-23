@@ -23,7 +23,7 @@ foreach (visiblePpas() as $ppa) {   // Encoders see only their own office
 }
 $visibleRefs = array_column($links, 'ref');
 $records = array_filter(approvalRecords(), fn ($r) => can('scope.all_offices') || array_intersect($r['ppas'], $visibleRefs));
-$offices = array_filter(mockOffices(), fn ($n, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
+$offices = array_filter(officeList(), fn ($n, $code) => canSeeOffice($code), ARRAY_FILTER_USE_BOTH);
 $issues = array_values(array_filter(linkIssues(), fn ($i) => can('scope.all_offices') || ($i['office'] !== '' && canSeeOffice($i['office']))));
 $counts = array_count_values(array_column($links, 'link'));
 $query = trim($_GET['q'] ?? '');

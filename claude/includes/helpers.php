@@ -6,7 +6,7 @@
 // All dates and times are shown in Philippine time, whatever the server's default is.
 date_default_timezone_set('Asia/Manila');
 
-/** Fiscal year of the AIP currently being prepared. MOCK: will come from the AIP cycle settings later. */
+/** Fiscal year of the AIP currently being prepared (change here at the start of each AIP cycle). */
 const AIP_FISCAL_YEAR = 2027;
 
 /** Every account must be linked to an email on this government domain (sign-in codes are sent there). */

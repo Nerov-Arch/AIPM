@@ -9,8 +9,8 @@ requireLogin($assetPrefix);
 requirePermission($requiredPermission, $assetPrefix);
 
 $me = currentUser();
-$roles = mockRoles();
-$offices = mockOffices();
+$roles = roleOptions();
+$offices = officeList();
 
 $editing = null;
 if (isset($_GET['id'])) {

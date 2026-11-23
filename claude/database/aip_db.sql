@@ -93,6 +93,7 @@ CREATE TABLE `users` (
   `last_login_at`        DATETIME     NULL,
   `created_by`           INT UNSIGNED NULL,
   `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by`           INT UNSIGNED NULL,
   `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_users_username` (`username`),
@@ -101,6 +102,7 @@ CREATE TABLE `users` (
   KEY `idx_users_role_status` (`role`, `status`),
   CONSTRAINT `fk_users_office`     FOREIGN KEY (`office_code`) REFERENCES `offices` (`code`) ON UPDATE CASCADE,
   CONSTRAINT `fk_users_created_by` FOREIGN KEY (`created_by`)  REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_users_updated_by` FOREIGN KEY (`updated_by`)  REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `chk_users_email` CHECK (`email` LIKE '%_@indang.gov.ph'),
   CONSTRAINT `chk_users_username` CHECK (CHAR_LENGTH(`username`) >= 3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -142,11 +144,15 @@ CREATE TABLE `fund_sources` (
   `category`     ENUM('General Fund','Special Purpose Fund','Trust Fund','External Source') NOT NULL,
   `description`  VARCHAR(500) NOT NULL DEFAULT '',
   `is_active`    TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_by`   INT UNSIGNED NULL,
   `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by`   INT UNSIGNED NULL,
   `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`code`),
   UNIQUE KEY `uq_funds_name` (`name`),
-  UNIQUE KEY `uq_funds_account` (`account_code`)
+  UNIQUE KEY `uq_funds_account` (`account_code`),
+  CONSTRAINT `fk_funds_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_funds_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Ceiling of each fund source per fiscal year
@@ -360,7 +366,10 @@ CREATE TABLE `aip_version_entries` (
   `start_date`      DATE          NULL,
   `end_date`        DATE          NULL,
   `expected_output` TEXT          NULL,
+  `fund_code`       VARCHAR(10)   NULL,                          -- primary fund at the time of the snapshot
+  `allocations`     TEXT          NULL,                          -- JSON {"GF": 2000000, "TF": 500000} when split
   `fund_label`      VARCHAR(200)  NOT NULL DEFAULT '',            -- e.g. "GF ₱2,000,000.00 / TF ₱500,000.00"
+  `record_no`       VARCHAR(60)   NULL,                          -- approval record at the time of the snapshot
   `status`          VARCHAR(20)   NOT NULL,
   `ps`              DECIMAL(15,2) NOT NULL DEFAULT 0.00,
   `mooe`            DECIMAL(15,2) NOT NULL DEFAULT 0.00,

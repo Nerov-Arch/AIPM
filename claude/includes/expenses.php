@@ -6,11 +6,9 @@
  * receipt / OR number and a photo or scan of the receipt). Audit staff see
  * every expense on a timeline and mark it verified or flagged.
  *
- * MOCK STORE: expense records live in the session store until the database
- * phase (table `ppa_expenses`). Receipt FILES are saved on the server in
- * uploads/receipts/ and are only served through pages/receipt.php after a
- * permission check. Because the records are session-only, a file stays on
- * disk after the session ends; clean the folder when resetting test data.
+ * Storage: MySQL table `ppa_expenses`. Receipt FILES are saved on the server
+ * in uploads/receipts/ with random names and are only served through
+ * pages/receipt.php after a permission check.
  */
 
 /** PPA statuses in which expenses can be recorded. */
@@ -24,54 +22,50 @@ function receiptDir(): string
     return dirname(__DIR__) . '/uploads/receipts';
 }
 
-/** MOCK: sample expenses matching the utilized amounts of the sample PPAs (no receipt images). */
-function mockExpenses(): array
-{
-    $fy = AIP_FISCAL_YEAR;
-    $rows = [
-        ["PPA-$fy-012", '2026-10-02', 'Seedlings and planting materials (2,000 pcs)', 150000, 'OR-55120'],
-        ["PPA-$fy-012", '2026-10-05', 'Meals and transport of volunteers, 3 planting days', 120000, 'OR-55187'],
-        ["PPA-$fy-013", '2026-09-20', 'Financial assistance released, batch 1 (200 beneficiaries)', 1000000, 'DV-2026-0918'],
-        ["PPA-$fy-013", '2026-10-01', 'Financial assistance released, batch 2 (100 beneficiaries)', 500000, 'DV-2026-1004'],
-        ["PPA-$fy-014", '2026-08-28', 'Consultancy services, CLUP technical working group', 700000, 'DV-2026-0811'],
-        ["PPA-$fy-014", '2026-09-25', 'Printing and public hearing expenses', 480000, 'OR-54410'],
-    ];
-    $expenses = [];
-    foreach ($rows as $i => [$ref, $date, $description, $amount, $receiptNo]) {
-        $id = $i + 1;
-        $expenses[$id] = [
-            'id' => $id, 'ref' => $ref, 'date' => $date, 'description' => $description, 'amount' => (float) $amount,
-            'receipt_no' => $receiptNo, 'file' => null,
-            'recorded_by' => 'System (sample data)', 'recorded_by_id' => null, 'recorded_at' => $date . ' 16:00:00',
-            'audit' => $i === 0 ? ['status' => 'verified', 'by' => 'Ramon Aquino (raquino)', 'at' => '2026-10-06 09:00:00', 'note' => 'Matches the delivery receipt.']
-                                : ['status' => 'unverified', 'by' => '', 'at' => '', 'note' => ''],
-        ];
-    }
-    return $expenses;
-}
-
+/** Kept for older callers; the database needs no initialisation. */
 function expenseStoreInit(): void
 {
-    storeInit();
-    if (!isset($_SESSION['mock_store']['expenses'])) {
-        $_SESSION['mock_store']['expenses'] = mockExpenses();
-        $_SESSION['mock_store']['next_expense_id'] = count($_SESSION['mock_store']['expenses']) + 1;
-    }
+}
+
+function expenseFromRow(array $r): array
+{
+    return [
+        'id'             => (int) $r['id'],
+        'ref'            => $r['ref'],
+        'date'           => $r['expense_date'],
+        'description'    => $r['description'],
+        'amount'         => (float) $r['amount'],
+        'receipt_no'     => $r['receipt_no'],
+        'file'           => $r['receipt_file'] === null ? null : ['stored' => $r['receipt_file'], 'name' => (string) $r['receipt_original_name'],
+                                                              'mime' => (string) $r['receipt_mime'], 'size' => (int) $r['receipt_size']],
+        'recorded_by'    => dbActorLabel($r['r_name'], $r['r_user']) ?: 'System (sample data)',
+        'recorded_by_id' => $r['recorded_by'] === null ? null : (int) $r['recorded_by'],
+        'recorded_at'    => $r['recorded_at'],
+        'audit'          => ['status' => $r['audit_status'], 'by' => dbActorLabel($r['a_name'], $r['a_user']),
+                             'at' => (string) $r['audited_at'], 'note' => (string) $r['audit_note']],
+    ];
 }
 
 /** All expenses, newest date first. */
 function storeExpenses(): array
 {
-    expenseStoreInit();
-    $rows = array_values($_SESSION['mock_store']['expenses']);
-    usort($rows, fn ($a, $b) => [$b['date'], $b['id']] <=> [$a['date'], $a['id']]);
-    return $rows;
+    return dbCached('expenses', fn () => array_map('expenseFromRow', dbAll(
+        'SELECT e.*, p.ref, r.full_name AS r_name, r.username AS r_user, a.full_name AS a_name, a.username AS a_user
+         FROM ppa_expenses e
+         JOIN ppas p ON p.id = e.ppa_id
+         LEFT JOIN users r ON r.id = e.recorded_by
+         LEFT JOIN users a ON a.id = e.audited_by
+         ORDER BY e.expense_date DESC, e.id DESC')));
 }
 
 function storeFindExpense(int $id): ?array
 {
-    expenseStoreInit();
-    return $_SESSION['mock_store']['expenses'][$id] ?? null;
+    foreach (storeExpenses() as $expense) {
+        if ($expense['id'] === $id) {
+            return $expense;
+        }
+    }
+    return null;
 }
 
 /** Expenses of one PPA in date order (the expenditure timeline). */
@@ -206,16 +200,18 @@ function storeAddExpense(array $ppa, array $clean): array
     if (!move_uploaded_file($clean['file']['tmp'], $dir . '/' . $stored)) {
         throw new RuntimeException('Receipt file could not be saved.');
     }
-    $user = currentUser();
-    $id = $_SESSION['mock_store']['next_expense_id']++;
-    $record = [
-        'id' => $id, 'ref' => $ppa['ref'], 'date' => $clean['date'], 'description' => $clean['description'],
-        'amount' => $clean['amount'], 'receipt_no' => $clean['receipt_no'],
-        'file' => ['stored' => $stored, 'name' => $clean['file']['name'], 'mime' => $clean['file']['mime'], 'size' => $clean['file']['size']],
-        'recorded_by' => $user['name'] . ' (' . $user['username'] . ')', 'recorded_by_id' => $user['id'], 'recorded_at' => date('Y-m-d H:i:s'),
-        'audit' => ['status' => 'unverified', 'by' => '', 'at' => '', 'note' => ''],
-    ];
-    $_SESSION['mock_store']['expenses'][$id] = $record;
+    [$actorId] = dbActor();
+    try {
+        dbExec('INSERT INTO ppa_expenses (ppa_id, expense_date, description, amount, receipt_no, receipt_file, receipt_original_name,
+                                          receipt_mime, receipt_size, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            ppaId($ppa['ref']), $clean['date'], $clean['description'], $clean['amount'], $clean['receipt_no'],
+            $stored, $clean['file']['name'], $clean['file']['mime'], $clean['file']['size'], $actorId,
+        ]);
+    } catch (Throwable $e) {
+        @unlink($dir . '/' . $stored);   // do not leave an orphan file behind
+        throw $e;
+    }
+    $record = storeFindExpense((int) db()->lastInsertId());
     syncPpaUtilized($ppa['ref'], 'Expense recorded: ' . peso($record['amount']) . ' (' . $record['receipt_no'] . ')', $record['description']);
     auditLog('expense.add', $ppa['ref'], peso($record['amount']) . ' · ' . $record['receipt_no'] . ' · ' . $record['description']);
     return $record;
@@ -230,8 +226,7 @@ function canDeleteExpense(array $expense, array $ppa): bool
 
 function storeDeleteExpense(array $expense): void
 {
-    expenseStoreInit();
-    unset($_SESSION['mock_store']['expenses'][$expense['id']]);
+    dbExec('DELETE FROM ppa_expenses WHERE id = ?', [$expense['id']]);
     if ($expense['file']) {
         $path = receiptDir() . '/' . basename($expense['file']['stored']);
         if (is_file($path)) {
@@ -258,11 +253,9 @@ function auditExpense(array $expense, string $status, string $note): string
     if (mb_strlen($note) > 500) {
         return 'Use 500 characters or fewer for the audit note.';
     }
-    expenseStoreInit();
-    $user = currentUser();
-    $_SESSION['mock_store']['expenses'][$expense['id']]['audit'] = [
-        'status' => $status, 'by' => $user['name'] . ' (' . $user['username'] . ')', 'at' => date('Y-m-d H:i:s'), 'note' => $note,
-    ];
+    [$actorId] = dbActor();
+    dbExec('UPDATE ppa_expenses SET audit_status = ?, audited_by = ?, audited_at = NOW(), audit_note = ? WHERE id = ?',
+        [$status, $actorId, dbNull($note), $expense['id']]);
     auditLog($status === 'verified' ? 'expense.verify' : 'expense.flag', $expense['ref'],
         peso($expense['amount']) . ' · ' . $expense['receipt_no'] . ($note !== '' ? ' · ' . $note : ''));
     return '';

@@ -2,9 +2,8 @@
 
 A step-by-step guide to running the Web-Based Annual Investment Program (AIP) System on your own computer.
 
-> **Development build.** The system runs on **sample data kept in your browser session**. No database is
-> connected yet, so MySQL is not needed. Anything you add or change lasts only until you close the browser.
-> The accounts below are **test accounts for demonstration only**, not real users.
+> **Development build.** All data is saved in a **MySQL database** (`aip_db`), so changes are kept and shared
+> by everyone using the system. The accounts below are **test accounts for demonstration only**, not real users.
 
 ---
 
@@ -13,10 +12,9 @@ A step-by-step guide to running the Web-Based Annual Investment Program (AIP) Sy
 | Item | Notes |
 |---|---|
 | XAMPP with **PHP 8.0 or newer** | Download it from apachefriends.org. Any current version works. |
+| XAMPP's **MySQL** and **phpMyAdmin** | Included with XAMPP. |
 | A web browser | Chrome, Edge or Firefox. |
 | The project files | The `claude` folder from the GitHub repo `Nerov-Arch/AIPM`. |
-
-MySQL and phpMyAdmin are **not** needed for this build.
 
 ## 2. Get the files
 
@@ -48,19 +46,30 @@ Copy the **`claude`** folder into XAMPP's web folder:
 Make sure `login.php` sits directly inside `htdocs\claude\`, **not** in `htdocs\claude\claude\`. Extracting a ZIP
 sometimes adds a second folder level; if it does, move the inner folder up.
 
-## 4. Start Apache
+## 4. Start Apache and MySQL
 
 1. Open the **XAMPP Control Panel**.
-2. Click **Start** next to **Apache**. It turns green.
-3. You do not need to start MySQL.
+2. Click **Start** next to **Apache** and next to **MySQL**. Both turn green.
 
-## 5. Open the system
+## 5. Create the database (first time only)
+
+1. Open **http://localhost/phpmyadmin/**.
+2. Click the **Import** tab (at the top, with no database selected).
+3. Choose `claude\database\aip_db.sql` and click **Import**. This creates the `aip_db` database with its
+   tables, sectors, offices, fund sources and one `admin` account.
+4. Click **Import** again, choose `claude\database\aip_sample_data.sql` and click **Import**. This adds the
+   test accounts below and sample PPAs, budgets, records and expenses. Skip this step for real use.
+
+XAMPP's MySQL user `root` has no password by default, which is what the system expects. If you set a
+password, copy `config\database.local.example.php` to `config\database.local.php` and enter it there.
+
+## 6. Open the system
 
 Go to: **http://localhost/claude/**
 
 The page takes you to the login screen.
 
-## 6. Sign in
+## 7. Sign in
 
 Signing in has **two steps**:
 
@@ -102,7 +111,7 @@ The email addresses are sample addresses for testing; no email is sent to them.
 
 Rules you'll notice: no one can act on a PPA they encoded; Finance cannot approve more than was requested; an expense cannot exceed the remaining approved budget.
 
-## 7. Suggested walkthrough (about 15 minutes)
+## 8. Suggested walkthrough (about 15 minutes)
 
 This shows the whole process from encoding to expenditure audit:
 
@@ -118,36 +127,41 @@ This shows the whole process from encoding to expenditure audit:
    - **Project Linking**: the PPA is connected to its office and fund source; an SB resolution can be linked here.
 7. **Administer.** Sign in as `admin`. Open **User Management** to add a user (a temporary password is shown once) and check the **Activity log**.
 
-Changes survive signing out and switching accounts, **as long as you keep using the same browser window**.
+Everything you do is saved in the database: it is still there after closing the browser, and other people
+signed in on other computers see the same records.
 
-## 8. Resetting the sample data
+## 9. Resetting the sample data
 
-Close **all** browser windows, or open a private/incognito window. The system starts fresh with the original sample data.
+Import `aip_db.sql` and then `aip_sample_data.sql` again in phpMyAdmin (section 5). **This deletes everything
+entered so far**, so export a backup first (phpMyAdmin → `aip_db` → **Export**) if you need it.
 
-Uploaded receipt photos are saved as files in `claude\uploads\receipts\`. They are not removed when the
-browser closes; delete the files in that folder (keep `.gitkeep`) to clear them.
+Uploaded receipt photos are saved as files in `claude\uploads\receipts\`. Delete the files in that folder
+(keep `.gitkeep`) when you reset the data.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Problem | Fix |
 |---|---|
 | Apache won't start (port 80 busy) | Another program, often Skype or IIS, is using port 80. Close it, or in XAMPP click **Config → httpd.conf**, change `Listen 80` to `Listen 8080`, restart Apache and open http://localhost:8080/claude/ |
+| "The system cannot connect to the database" | Start **MySQL** in XAMPP and make sure `aip_db.sql` was imported (section 5). If your MySQL user has a password, put it in `config\database.local.php`. |
+| MySQL won't start (port 3306 busy) | Another MySQL is running. Stop it, or change the port in XAMPP and in `config\database.local.php`. |
 | "Not Found" / 404 | The folder is in the wrong place or is nested twice. Check that `C:\xampp\htdocs\claude\login.php` exists. |
 | Page shows PHP code or a syntax error | XAMPP's PHP is older than 8.0. Install a current XAMPP. |
-| "Too many failed attempts" | Sign-in locks for 5 minutes after 5 wrong passwords (5 wrong sign-in codes also count as a failed attempt). Wait, or close the browser to reset. |
+| "Too many failed attempts" | Sign-in locks for 5 minutes after 5 wrong passwords (5 wrong sign-in codes also count as a failed attempt). Wait 5 minutes. |
 | "The code has expired" | Codes are valid for 5 minutes. Sign in again to get a new code, or click **Send a new code**. |
 | "Not linked to an @indang.gov.ph government email" | The account's email is not on the government domain. Sign in as `admin` and change the email under **User Management**. |
 | Receipt upload says the file is too large | The limit is 5 MB. If even small files fail, raise `upload_max_filesize` and `post_max_size` to at least 8M in XAMPP's `php.ini` and restart Apache. |
 | "Receipt could not be saved on the server" | Make sure the `uploads\receipts` folder exists and is not read-only. |
-| My changes disappeared | The browser was closed or a different browser/window was used. Data is not saved to a database yet. |
+| My changes disappeared | The SQL files were imported again, which resets the data. |
 | Forced to the **My Account** page | The account has a temporary password (for example, one an admin just created or reset). Set a new password to continue. |
 | Login page shows "account is no longer active" | An administrator deactivated that account. Sign in as `admin` and reactivate it under **User Management**. |
 
-## 10. Important notes
+## 11. Important notes
 
 - The test accounts and the shared password `Dev@2026` exist **only for development and demonstration**. They must
   be removed and replaced with real accounts before any real use by the client.
 - Sign-in codes are shown on screen because email sending is off (`config/mail.php`). Turning it on needs an
   SMTP relay set up for PHP; never put SMTP passwords in the repository.
-- No database is connected. `config/database.php` is an inactive placeholder; connecting MySQL is a separate,
-  planned phase.
+- For real use: import only `aip_db.sql` (not the sample file), sign in as `admin` and change its password,
+  create the real accounts, and set `show_sample_accounts` to `false` in `config/app.php`.
+- Never commit `config/database.local.php`; it is listed in `.gitignore`.
